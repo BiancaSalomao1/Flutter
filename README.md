@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 📱 Comandos Essenciais do Flutter
 
 ### 📚 Disciplina: Desenvolvimento Mobile - 2025.1
@@ -90,3 +91,5 @@ flutter test              # Executa os testes automatizados
 | `StatefulWidget` | Widget com estado mutável |
 | `StatelessWidget` | Widget sem estado |
 | `DevicePreview` | Ferramenta para visualizar o app em diferentes dispositivos |
+=======
+# appeducafin
