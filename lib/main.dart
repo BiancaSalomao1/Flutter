@@ -1,20 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:device_preview/device_preview.dart';
+import 'views/login.dart';
+
 
 void main() {
-  runApp(const MainApp());
+  runApp(
+    DevicePreview(
+      enabled: true, // Habilita o DevicePreview
+      builder: (context) => MyApp(),
+    ),
+  );
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
-
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Hello World!'),
-        ),
-      ),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      builder: DevicePreview.appBuilder,
+      home:LoginScreen(),
     );
   }
 }

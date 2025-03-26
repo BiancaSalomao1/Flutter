@@ -92,4 +92,3 @@ flutter test              # Executa os testes automatizados
 | `StatelessWidget` | Widget sem estado |
 | `DevicePreview` | Ferramenta para visualizar o app em diferentes dispositivos |
 =======
-# appeducafin

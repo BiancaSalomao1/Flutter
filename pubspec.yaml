@@ -9,6 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  device_preview: ^1.2.0
+  fl_chart: ^0.67.0  
+
+
 
 dev_dependencies:
   flutter_test:
