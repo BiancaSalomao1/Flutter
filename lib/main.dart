@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:appeducafin/views/login.dart';
 import 'package:device_preview/device_preview.dart';
-import 'views/login.dart';
+import 'package:flutter/material.dart';
 
 
 void main() {
@@ -13,11 +13,12 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      builder: DevicePreview.appBuilder,
+    debugShowCheckedModeBanner: false,
       home:LoginScreen(),
     );
   }

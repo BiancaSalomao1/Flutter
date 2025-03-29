@@ -1,20 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-
+import 'package:appeducafin/controllers/bottom_navegation.dart';
 
 class Report extends StatelessWidget {
   const Report({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Relatório de Investimentos',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
-      home: const InvestmentReportPage(),
-    );
+    return const InvestmentReportPage();
   }
 }
 
@@ -30,7 +22,7 @@ class _InvestmentReportPageState extends State<InvestmentReportPage> {
   String selectedInvestment = 'Tesouro Direto IPCA+ 2026';
   double totalAporte = 12500.00;
   double jurosAcumulados = 2345.67;
-  int tempoInvestimento = 18; // meses
+  int tempoInvestimento = 18;
 
   final List<String> investmentOptions = [
     'Tesouro Direto IPCA+ 2026',
@@ -42,7 +34,6 @@ class _InvestmentReportPageState extends State<InvestmentReportPage> {
   ];
 
   void _printReport() {
-    // Simulação de impressão/salvar PDF
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Relatório gerado com sucesso!'),
@@ -98,131 +89,126 @@ class _InvestmentReportPageState extends State<InvestmentReportPage> {
         ),
       ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Container com imagem de estatística
-              Container(
-                height: 250,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(
-                        selectedInvestment,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Image.asset(
-                        'assets/investment_chart.png', // Substitua por sua imagem real
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Center(
-                            child: Icon(Icons.insert_chart, size: 100, color: Colors.grey),
-                          );
-                        },
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text(
-                        'Desempenho nos últimos 12 meses',
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    ),
-                  ],
-                ),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Container com imagem de estatística
+            Container(
+              height: 250,
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(10),
               ),
-              
-              const SizedBox(height: 20),
-              
-              // Container com resumo do investimento
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Resumo do Investimento',
-                      style: TextStyle(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      selectedInvestment,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    _buildSummaryItem('Total Aportado:', totalAporte),
-                    _buildSummaryItem('Juros Acumulados:', jurosAcumulados),
-                    _buildSummaryItem('Tempo de Investimento:', tempoInvestimento, isCurrency: false, suffix: 'meses'),
-                    const SizedBox(height: 10),
-                    _buildSummaryItem('Valor Atual:', totalAporte + jurosAcumulados),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 20),
-              
-              // Botões de ação
-              Row(
-                children: [
+                  ),
                   Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.history),
-                      label: const Text('Histórico de Aportes'),
-                      onPressed: () {
-                        // Navegar para tela de histórico
+                    child: Image.asset(
+                      'assets/investment_chart.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Center(
+                          child: Icon(Icons.insert_chart, size: 100, color: Colors.grey),
+                        );
                       },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                      ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.notifications),
-                      label: const Text('Metas e Prazos'),
-                      onPressed: () {
-                        // Navegar para tela de metas
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                      ),
+                  const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text(
+                      'Desempenho nos últimos 12 meses',
+                      style: TextStyle(color: Colors.grey),
                     ),
                   ),
                 ],
               ),
-              
-              const SizedBox(height: 20),
-              
-              // Botão de impressão
-              ElevatedButton.icon(
-                icon: const Icon(Icons.print),
-                label: const Text('Gerar Relatório PDF'),
-                onPressed: _printReport,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Container com resumo do investimento
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(10),
               ),
-            ],
-          ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Resumo do Investimento',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildSummaryItem('Total Aportado:', totalAporte),
+                  _buildSummaryItem('Juros Acumulados:', jurosAcumulados),
+                  _buildSummaryItem('Tempo de Investimento:', tempoInvestimento, isCurrency: false, suffix: 'meses'),
+                  const SizedBox(height: 10),
+                  _buildSummaryItem('Valor Atual:', totalAporte + jurosAcumulados),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Botões de ação
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.history),
+                    label: const Text('Histórico de Aportes'),
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.notifications),
+                    label: const Text('Metas e Prazos'),
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Botão de impressão
+            ElevatedButton.icon(
+              icon: const Icon(Icons.print),
+              label: const Text('Gerar Relatório PDF'),
+              onPressed: _printReport,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
         ),
       ),
+      bottomNavigationBar: BottomNavigationController(), 
     );
   }
 
@@ -237,9 +223,9 @@ class _InvestmentReportPageState extends State<InvestmentReportPage> {
             style: const TextStyle(fontSize: 16),
           ),
           Text(
-            isCurrency 
-              ? 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}'
-              : '$value $suffix',
+            isCurrency
+                ? 'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}'
+                : '$value $suffix',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,

@@ -1,60 +1,70 @@
-import 'package:appeducafin/views/home.dart';
-import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
-import 'package:appeducafin/views/goals.dart';
-import 'package:appeducafin/views/historical.dart';
-import 'package:appeducafin/views/calculator.dart';
+import 'package:appeducafin/controllers/bottom_navegation.dart';
+import 'package:appeducafin/views/projection.dart';
 import 'package:appeducafin/views/report.dart';
-import 'package:appeducafin/views/project.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
 
-class InvestmentDashboard extends StatelessWidget {
+class StatisticDashboard extends StatefulWidget {
+  const StatisticDashboard({super.key});
+
+  @override
+  _StatisticDashboardState createState() => _StatisticDashboardState();
+}
+
+class _StatisticDashboardState extends State<StatisticDashboard> {
+  int _currentIndex = 0;
+
+  final List<Widget> _pages = [
+    // Placeholder pages, substitute as necessary
+    const Center(child: Text("Metas")),
+    const Center(child: Text("Calculadora de Juros Compostos")),
+    const Center(child: Text("Conteúdo Educacional")),
+    const Report(), // Update with your actual page
+  ];
+
+  void _onTabTapped(int index) {
+    setState(() {
+      _currentIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Estatísticas'),
+        title: const Text('Estatísticas'),
         backgroundColor: Colors.black,
       ),
-      body: Scrollbar(
-        thumbVisibility: true,
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minWidth: MediaQuery.of(context).size.width,
-            ),
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _buildTotalAmountCard(),
-                    SizedBox(height: 16),
-                    _buildCardsRow(context),
-                    SizedBox(height: 16),
-                    _buildStatisticsChart(),
-                    SizedBox(height: 16),
-                    _buildNavigationButtons(context),
-                  ],
-                ),
-              ),
-            ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text("conteúdo do texto"),
+              _buildTotalAmountCard(),
+              const SizedBox(height: 16),
+              _buildCardsRow(context),
+              const SizedBox(height: 16),
+              _buildStatisticsChart(),
+              const SizedBox(height: 16),
+              _buildNavigationButtons(context),
+            ],
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigation(context), // Added missing bottom navigation
+      bottomNavigationBar: CustomBottomNavigationBar(
+        currentIndex: _currentIndex, // Set the current index
+        onTap: _onTabTapped, // Handle tap on bottom navigation items
+      ),
     );
   }
 
-  // The rest of the methods remain the same...
-
-  // Move the methods before the build method
   Widget _buildTotalAmountCard() {
     return Card(
       color: Colors.black,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+      child: const Padding(
+        padding: EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -73,62 +83,40 @@ class InvestmentDashboard extends StatelessWidget {
     return Row(
       children: [
         Expanded(child: _buildEntriesCard()),
-        SizedBox(width: 16),
+        const SizedBox(width: 16),
         Expanded(child: _buildInterestCard()),
-        SizedBox(width: 16),
-        if (MediaQuery.of(context).size.width > 600) Expanded(child: _buildExtraCard()),
+        if (MediaQuery.of(context).size.width > 600) ...[
+          const SizedBox(width: 16),
+          Expanded(child: _buildExtraCard()),
+        ],
       ],
     );
   }
 
   Widget _buildEntriesCard() {
-    return Card(
-      color: Colors.pink[100],
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.input, color: Colors.pink),
-            SizedBox(height: 8),
-            Text('Entradas', style: TextStyle(fontSize: 16)),
-            Text('R\$87.594,00', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-    );
+    return _buildInfoCard(Icons.input, Colors.pink, 'Entradas', 'R\$87.594,00');
   }
 
   Widget _buildInterestCard() {
-    return Card(
-      color: Colors.yellow[100],
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.monetization_on, color: Colors.yellow),
-            SizedBox(height: 8),
-            Text('Juros', style: TextStyle(fontSize: 16)),
-            Text('R\$7.792,00', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-    );
+    return _buildInfoCard(Icons.monetization_on, Colors.yellow, 'Juros', 'R\$7.792,00');
   }
 
   Widget _buildExtraCard() {
+    return _buildInfoCard(Icons.trending_up, Colors.green, 'Rendimento', '+6.02%');
+  }
+
+  Widget _buildInfoCard(IconData icon, Color color, String title, String value) {
     return Card(
-      color: Colors.green[100],
+      color: color.withOpacity(0.2),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.trending_up, color: Colors.green),
-            SizedBox(height: 8),
-            Text('Rendimento', style: TextStyle(fontSize: 16)),
-            Text('+6.02%', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
+            Icon(icon, color: color),
+            const SizedBox(height: 8),
+            Text(title, style: const TextStyle(fontSize: 16)),
+            Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -141,100 +129,45 @@ class InvestmentDashboard extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Text(
-              'Estatística',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            const Text('Estatística', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 250,
+              child: LineChart(
+                LineChartData(
+                  minX: 0,
+                  maxX: 6,
+                  minY: 0,
+                  maxY: 100,
+                  gridData: FlGridData(show: true),
+                  titlesData: FlTitlesData(show: true),
+                  borderData: FlBorderData(show: false),
+                  lineBarsData: [
+                    LineChartBarData(
+                      spots: [
+                        FlSpot(0, 10), FlSpot(1, 20), FlSpot(2, 30),
+                        FlSpot(3, 45), FlSpot(4, 65), FlSpot(5, 80), FlSpot(6, 94),
+                      ],
+                      isCurved: true,
+                      color: Colors.red,
+                      barWidth: 4,
+                      belowBarData: BarAreaData(show: true, color: Colors.red.withOpacity(0.3)),
+                    ),
+                    LineChartBarData(
+                      spots: [
+                        FlSpot(0, 10), FlSpot(1, 15), FlSpot(2, 25),
+                        FlSpot(3, 40), FlSpot(4, 55), FlSpot(5, 70), FlSpot(6, 90),
+                      ],
+                      isCurved: true,
+                      color: Colors.blue,
+                      barWidth: 4,
+                      belowBarData: BarAreaData(show: true, color: Colors.blue.withOpacity(0.3)),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            SizedBox(height: 16),
-            Container(
-  height: 250,
-  child: LineChart(
-    LineChartData(
-      minX: 0,
-      maxX: 6,
-      minY: 0,
-      maxY: 100,
-      gridData: FlGridData(
-        show: true,
-        drawVerticalLine: true,
-        drawHorizontalLine: true,
-        getDrawingHorizontalLine: (value) => FlLine(
-          color: Colors.grey,
-          strokeWidth: 1,
-        ),
-      ),
-      titlesData: FlTitlesData(
-        show: true,
-        bottomTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 30,
-            getTitlesWidget: (value, meta) {
-              const style = TextStyle(fontSize: 10);
-              switch (value.toInt()) {
-                case 0: return Text('Jan', style: style);
-                case 2: return Text('Mar', style: style);
-                case 4: return Text('Mai', style: style);
-                case 6: return Text('Jul', style: style);
-                default: return Text('', style: style);
-              }
-            },
-          ),
-        ),
-        leftTitles: AxisTitles(
-          sideTitles: SideTitles(
-            showTitles: true,
-            reservedSize: 40,
-            getTitlesWidget: (value, meta) {
-              return Text('${value.toInt()}%', style: TextStyle(fontSize: 10));
-            },
-          ),
-        ),
-      ),
-      borderData: FlBorderData(
-        show: false,
-      ),
-      lineBarsData: [
-        LineChartBarData(
-          spots: [
-            FlSpot(0, 10),
-            FlSpot(1, 20),
-            FlSpot(2, 30),
-            FlSpot(3, 45),
-            FlSpot(4, 65),
-            FlSpot(5, 80),
-            FlSpot(6, 94),
           ],
-          isCurved: true,
-          color: Colors.red,
-          barWidth: 4,
-          belowBarData: BarAreaData(
-            show: true,
-            color: Colors.red,
-          ),
-        ),
-        LineChartBarData(
-          spots: [
-            FlSpot(0, 10),
-            FlSpot(1, 15),
-            FlSpot(2, 25),
-            FlSpot(3, 40),
-            FlSpot(4, 55),
-            FlSpot(5, 70),
-            FlSpot(6, 90),
-          ],
-          isCurved: true,
-          color: Colors.blue,
-          barWidth: 4,
-          belowBarData: BarAreaData(
-            show: true,
-            color: Colors.blue,
-          ),
-        ),
-      ],
-    ),
-  ),
-)],
         ),
       ),
     );
@@ -246,36 +179,19 @@ class InvestmentDashboard extends StatelessWidget {
       children: [
         ElevatedButton(
           onPressed: () => Navigator.push(
-            context, 
-            MaterialPageRoute(builder: (context) => Report()),
+            context,
+            MaterialPageRoute(builder: (context) => const Report()),
           ),
-          child: Text('Relatório'),
+          child: const Text('Relatório'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ProjectionPage()),
+          ),
+          child: const Text('Projeção'),
         ),
       ],
-    );
-  }
-
-  Widget _buildBottomNavigation(BuildContext context) {
-    return BottomNavigationBar(
-      items: const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Início'),
-        BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Metas'),
-        BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Estatística'),
-        BottomNavigationBarItem(icon: Icon(Icons.calculate), label: 'Calculadora'),
-      ],
-      currentIndex: 2, // Modifique dinamicamente conforme a tela ativa
-      onTap: (index) {
-        switch (index) {
-          case 0: Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => HomePage())); break;
-         // case 1: Navigator.push(context, MaterialPageRoute(builder: (context) => Goals())); break;
-          case 2: break; // Já estamos na InvestmentDashboard
-         // case 3: Navigator.push(context, MaterialPageRoute(builder: (context) => Calculator())); break;
-          default: break;
-        }
-      },
-      selectedItemColor: Colors.blue,
-      unselectedItemColor: Colors.grey,
-      type: BottomNavigationBarType.fixed,
     );
   }
 }
