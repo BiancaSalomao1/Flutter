@@ -1,9 +1,50 @@
-/*O aplicativo deve exibir mensagens em caixas de diálogos
-AlertDialog
-SnackBar
+import 'package:flutter/material.dart';
 
-Listagem de dados
-O aplicativo deve utilizar widget ListView ou GridView para apresentar uma lista de dados.
-ListView é uma lista rolável de widgets organizados linearmente,
-exibe uma lista de elementos em duas dimensões, no formato de grade.
- */
+class AboutPage extends StatelessWidget {
+  const AboutPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(context),
+              const SizedBox(height: 24),
+              const Text(
+                'Sobre Nós',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Este aplicativo foi desenvolvido com o objetivo de auxiliar os usuários na organização de metas financeiras, investimentos e educação financeira de forma prática e intuitiva.\n\n'
+                'Nossa missão é tornar o planejamento financeiro acessível a todos, promovendo autonomia e clareza nas decisões sobre o dinheiro.\n\n'
+                'Se você tiver sugestões ou encontrar problemas, entre em contato conosco!',
+                style: TextStyle(fontSize: 16),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        const SizedBox(width: 8),
+        const Text(
+          'Sobre Nós',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+}

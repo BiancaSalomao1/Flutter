@@ -1,61 +1,27 @@
-import 'package:appeducafin/controllers/bottom_navegation.dart';
 import 'package:appeducafin/views/projection.dart';
 import 'package:appeducafin/views/report.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
-class StatisticDashboard extends StatefulWidget {
+class StatisticDashboard extends StatelessWidget {
   const StatisticDashboard({super.key});
 
   @override
-  _StatisticDashboardState createState() => _StatisticDashboardState();
-}
-
-class _StatisticDashboardState extends State<StatisticDashboard> {
-  int _currentIndex = 0;
-
-  final List<Widget> _pages = [
-    // Placeholder pages, substitute as necessary
-    const Center(child: Text("Metas")),
-    const Center(child: Text("Calculadora de Juros Compostos")),
-    const Center(child: Text("Conteúdo Educacional")),
-    const Report(), // Update with your actual page
-  ];
-
-  void _onTabTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Estatísticas'),
-        backgroundColor: Colors.black,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text("conteúdo do texto"),
-              _buildTotalAmountCard(),
-              const SizedBox(height: 16),
-              _buildCardsRow(context),
-              const SizedBox(height: 16),
-              _buildStatisticsChart(),
-              const SizedBox(height: 16),
-              _buildNavigationButtons(context),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: CustomBottomNavigationBar(
-        currentIndex: _currentIndex, // Set the current index
-        onTap: _onTabTapped, // Handle tap on bottom navigation items
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text("conteúdo do texto"),
+          _buildTotalAmountCard(),
+          const SizedBox(height: 16),
+          _buildCardsRow(context),
+          const SizedBox(height: 16),
+          _buildStatisticsChart(),
+          const SizedBox(height: 16),
+          _buildNavigationButtons(context),
+        ],
       ),
     );
   }
@@ -82,27 +48,16 @@ class _StatisticDashboardState extends State<StatisticDashboard> {
   Widget _buildCardsRow(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _buildEntriesCard()),
+        Expanded(child: _buildInfoCard(Icons.input, Colors.pink, 'Entradas', 'R\$87.594,00')),
         const SizedBox(width: 16),
-        Expanded(child: _buildInterestCard()),
-        if (MediaQuery.of(context).size.width > 600) ...[
-          const SizedBox(width: 16),
-          Expanded(child: _buildExtraCard()),
-        ],
+        Expanded(child: _buildInfoCard(Icons.monetization_on, Colors.yellow, 'Juros', 'R\$7.792,00')),
+        if (MediaQuery.of(context).size.width > 600)
+          ...[
+            const SizedBox(width: 16),
+            Expanded(child: _buildInfoCard(Icons.trending_up, Colors.green, 'Rendimento', '+6.02%')),
+          ],
       ],
     );
-  }
-
-  Widget _buildEntriesCard() {
-    return _buildInfoCard(Icons.input, Colors.pink, 'Entradas', 'R\$87.594,00');
-  }
-
-  Widget _buildInterestCard() {
-    return _buildInfoCard(Icons.monetization_on, Colors.yellow, 'Juros', 'R\$7.792,00');
-  }
-
-  Widget _buildExtraCard() {
-    return _buildInfoCard(Icons.trending_up, Colors.green, 'Rendimento', '+6.02%');
   }
 
   Widget _buildInfoCard(IconData icon, Color color, String title, String value) {

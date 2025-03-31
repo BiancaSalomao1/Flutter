@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:appeducafin/controllers/bottom_navegation.dart';
+
 
 class Report extends StatelessWidget {
   const Report({super.key});
@@ -208,7 +208,7 @@ class _InvestmentReportPageState extends State<InvestmentReportPage> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationController(), 
+      // bottomNavigationBar: BottomNavigationController(), 
     );
   }
 

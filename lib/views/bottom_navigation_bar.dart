@@ -13,16 +13,14 @@ class CustomBottomNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
-      currentIndex: currentIndex,
-      onTap: onTap,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Início'),
-        BottomNavigationBarItem(icon: Icon(Icons.wallet), label: 'Metas'),
-        BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Estatísticas'),
+        BottomNavigationBarItem(icon: Icon(Icons.flag), label: 'Metas'),
+        BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Estatística'),
         BottomNavigationBarItem(icon: Icon(Icons.calculate), label: 'Calculadora'),
       ],
-      selectedItemColor: Colors.pinkAccent,
-      unselectedItemColor: Colors.grey,
+      currentIndex: currentIndex,
+      onTap: onTap,
       type: BottomNavigationBarType.fixed,
     );
   }

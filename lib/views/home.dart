@@ -1,30 +1,34 @@
 import 'package:appeducafin/controllers/bottom_navegation.dart';
+import 'package:appeducafin/views/about.dart';
+import 'package:appeducafin/views/alert.dart';
+import 'package:appeducafin/views/calculator.dart';
+import 'package:appeducafin/views/educational.dart';
+import 'package:appeducafin/views/goals.dart';
+import 'package:appeducafin/views/historical.dart';
+import 'package:appeducafin/views/sugestions.dart';
 import 'package:flutter/material.dart';
-import 'package:appeducafin/views/projection.dart'; // Import the new page
+import 'package:appeducafin/views/statistic.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  _HomePageState createState() => _HomePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   final PageController _pageController = PageController();
 
-  // Placeholder pages for navigation
   final List<Widget> _pages = [
-    const Center(child: Text("Metas")),
-    const Center(child: Text("Calculadora de Juros Compostos")),
-    const Center(child: Text("Conteúdo Educacional")),
-    const ProjectionPage(), // Use the new page here
+    const HomeContent(),
+    const GoalsPage(),
+    const StatisticDashboard(),
+    const CalculatorPage(),
   ];
 
   void _onTabTapped(int index) {
-    setState(() {
-      _currentIndex = index;
-    });
+    setState(() => _currentIndex = index);
     _pageController.jumpToPage(index);
   }
 
@@ -37,6 +41,30 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      body: PageView(
+        controller: _pageController,
+        physics: const NeverScrollableScrollPhysics(),
+        children: _pages,
+      ),
+      bottomNavigationBar: CustomBottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: _onTabTapped,
+      ),
+    );
+  }
+}
+
+class HomeContent extends StatelessWidget {
+  const HomeContent({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    void navigateTo(int index) {
+      final homeState = context.findAncestorStateOfType<_HomePageState>();
+      homeState?._onTabTapped(index);
+    }
+
+    return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -46,19 +74,32 @@ class _HomePageState extends State<HomePage> {
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Oi, Fulana!',
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black)),
-                const Text('Bom Dia. Bom ver você aqui.',
-                    style: TextStyle(fontSize: 14, color: Colors.grey)),
+              children: const [
+                Text(
+                  'Oi, Fulana!',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                Text(
+                  'Bom Dia. Bom ver você aqui.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
               ],
             ),
-            const CircleAvatar(
-              backgroundImage: AssetImage('assets/profile.jpg'),
-            )
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AlertPage()),
+                );
+              },
+              child: const CircleAvatar(
+                backgroundImage: AssetImage('assets/profile.jpg'),
+              ),
+            ),
           ],
         ),
       ),
@@ -75,25 +116,69 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             const SizedBox(height: 20),
-            const Text('Menu',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'Menu',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
             Expanded(
               child: ListView(
-                children: [
-                  _buildMenuItem(Icons.shield, 'Metas', () => _onTabTapped(0)),
-                  _buildMenuItem(Icons.flash_on, 'Calculadora de Juros Compostos', () => _onTabTapped(1)),
-                  _buildMenuItem(Icons.school, 'Conteúdo Educacional', () => _onTabTapped(2)),
-                  _buildMenuItem(Icons.money, 'Renda Passiva', () => _onTabTapped(3)),
-                ],
+                children: [_buildMenuItem(Icons.shield, 'Metas', () => navigateTo(1)),
+
+_buildMenuItem(
+  Icons.bar_chart,
+  'Estatísticas',
+  () => navigateTo(2),
+),
+
+_buildMenuItem(
+  Icons.school,
+  'Conteúdo Educacional',
+  () => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const EducationalContentPage(),
+    ),
+  ),
+),
+
+_buildMenuItem(
+  Icons.note_alt,
+  'Sugestões',
+  () => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const InvestmentSuggestionsPage(),
+    ),
+  ),
+),
+
+_buildMenuItem(
+  Icons.list,
+  'Histórico',
+  () => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const HistoricalPage(),
+    ),
+  ),
+),
+
+_buildMenuItem(
+  Icons.nordic_walking,
+  'Sobre Nós',
+  () => Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => const AboutPage(),
+    ),
+  ),
+),
+],
               ),
             ),
           ],
         ),
-      ),
-      bottomNavigationBar: CustomBottomNavigationBar(  // Use CustomBottomNavigationBar here
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
       ),
     );
   }
@@ -109,17 +194,23 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 10),
-          Text(amount,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold)),
+          Text(
+            amount,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
