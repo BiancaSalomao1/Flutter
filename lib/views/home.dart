@@ -123,58 +123,59 @@ class HomeContent extends StatelessWidget {
             const SizedBox(height: 10),
             Expanded(
               child: ListView(
-                children: [_buildMenuItem(Icons.shield, 'Metas', () => navigateTo(1)),
+                children: [
+                  _buildMenuItem(Icons.shield, 'Metas', () => navigateTo(1)),
 
-_buildMenuItem(
-  Icons.bar_chart,
-  'Estatísticas',
-  () => navigateTo(2),
-),
+                  _buildMenuItem(
+                    Icons.bar_chart,
+                    'Estatísticas',
+                    () => navigateTo(2),
+                  ),
 
-_buildMenuItem(
-  Icons.school,
-  'Conteúdo Educacional',
-  () => Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const EducationalContentPage(),
-    ),
-  ),
-),
+                  _buildMenuItem(
+                    Icons.school,
+                    'Conteúdo Educacional',
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EducationalContentPage(),
+                      ),
+                    ),
+                  ),
 
-_buildMenuItem(
-  Icons.note_alt,
-  'Sugestões',
-  () => Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const InvestmentSuggestionsPage(),
-    ),
-  ),
-),
+                  _buildMenuItem(
+                    Icons.note_alt,
+                    'Sugestões',
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const InvestmentSuggestionsPage(),
+                      ),
+                    ),
+                  ),
 
-_buildMenuItem(
-  Icons.list,
-  'Histórico',
-  () => Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const HistoricalPage(),
-    ),
-  ),
-),
+                  _buildMenuItem(
+                    Icons.list,
+                    'Histórico',
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HistoricalPage(),
+                      ),
+                    ),
+                  ),
 
-_buildMenuItem(
-  Icons.nordic_walking,
-  'Sobre Nós',
-  () => Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => const AboutPage(),
-    ),
-  ),
-),
-],
+                  _buildMenuItem(
+                    Icons.nordic_walking,
+                    'Sobre Nós',
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AboutPage(),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
