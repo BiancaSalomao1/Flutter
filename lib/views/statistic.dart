@@ -13,7 +13,7 @@ class StatisticDashboard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text("conteúdo do texto"),
+          const Text(" "),
           _buildTotalAmountCard(),
           const SizedBox(height: 16),
           _buildCardsRow(context),

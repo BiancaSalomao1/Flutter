@@ -123,50 +123,44 @@ class HistoricalPage extends StatelessWidget {
     );
   }
 
-  void _showPrintDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.deepPurple.shade900,
-        contentPadding: const EdgeInsets.all(24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GestureDetector(
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: lógica para exportar como PDF
-              },
-              child: Row(
-                children: const [
-                  Icon(Icons.picture_as_pdf, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('SALVAR COMO PDF',
-                      style: TextStyle(color: Colors.white, fontSize: 16)),
-                ],
-              ),
+ void _showPrintDialog(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      backgroundColor: Colors.deepPurple.shade900,
+      contentPadding: const EdgeInsets.all(24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            onTap: () {
+              Navigator.pop(context);
+              // TODO: lógica para exportar como PDF
+            },
+            leading: const Icon(Icons.picture_as_pdf, color: Colors.white),
+            title: const Text(
+              'SALVAR COMO PDF',
+              style: TextStyle(color: Colors.white, fontSize: 16),
             ),
-            const SizedBox(height: 24),
-            GestureDetector(
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: lógica para imprimir
-              },
-              child: Row(
-                children: const [
-                  Icon(Icons.print, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('IMPRIMIR NA IMPRESSORA LOCAL',
-                      style: TextStyle(color: Colors.white, fontSize: 16)),
-                ],
-              ),
+          ),
+          const Divider(color: Colors.white24),
+          ListTile(
+            onTap: () {
+              Navigator.pop(context);
+              // TODO: lógica para imprimir
+            },
+            leading: const Icon(Icons.print, color: Colors.white),
+            title: const Text(
+              'IMPRIMIR NA IMPRESSORA LOCAL',
+              style: TextStyle(color: Colors.white, fontSize: 16),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 // Enum para status

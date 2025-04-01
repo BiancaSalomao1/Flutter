@@ -15,23 +15,34 @@ class _ProjectionPageState extends State<ProjectionPage> {
   List<double> _projectedData = [0, 3500, 5500, 7500, 8500, 10500, 12500, 15500, 21000];
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInvestmentCard(),
-            const SizedBox(height: 16),
-            _buildLineChart(),
-            const SizedBox(height: 16),
-            _buildProjectionDetails(),
-          ],
-        ),
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back),
+        onPressed: () {
+          Navigator.pop(context);
+        },
       ),
-    );
-  }
+      title: const Text('Projeção'),
+      backgroundColor: Colors.blue, // opcional
+    ),
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildInvestmentCard(),
+          const SizedBox(height: 16),
+          _buildLineChart(),
+          const SizedBox(height: 16),
+          _buildProjectionDetails(),
+        ],
+      ),
+    ),
+  );
+}
 
   Widget _buildInvestmentCard() {
     return Card(

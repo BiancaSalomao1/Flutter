@@ -33,16 +33,19 @@ class _CalculatorPageState extends State<CalculatorPage> {
   @override
   void initState() {
     super.initState();
-    _initialController.text = widget.initialAmount?.toStringAsFixed(0) ?? '38000';
+    _initialController.text =
+        widget.initialAmount?.toStringAsFixed(0) ?? '38000';
     _monthsController.text = widget.months?.toString() ?? '120';
-    _interestController.text = widget.interestRate?.toStringAsFixed(2) ?? '1.03';
+    _interestController.text =
+        widget.interestRate?.toStringAsFixed(2) ?? '1.03';
   }
 
   void _calculate() {
     final double initial = double.tryParse(_initialController.text) ?? 0;
     final double monthly = double.tryParse(_monthlyController.text) ?? 0;
     final int months = int.tryParse(_monthsController.text) ?? 0;
-    final double interest = (double.tryParse(_interestController.text) ?? 0) / 100;
+    final double interest =
+        (double.tryParse(_interestController.text) ?? 0) / 100;
 
     double total = initial;
     for (int i = 0; i < months; i++) {
@@ -161,16 +164,25 @@ class CalculatorContent extends StatelessWidget {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        const Text(
-          'Calculadora\nJuros Compostos',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        const Padding(
+          padding: EdgeInsets.all(10),
+          child: Text(
+            'Calculadora\nJuros Compostos',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
         ),
+
         const Icon(Icons.calculate_outlined, size: 30),
       ],
     );
   }
 
-  Widget _buildInput(String label, TextEditingController controller, {String? prefix, String? suffix}) {
+  Widget _buildInput(
+    String label,
+    TextEditingController controller, {
+    String? prefix,
+    String? suffix,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -184,8 +196,14 @@ class CalculatorContent extends StatelessWidget {
             fillColor: Colors.grey.shade200,
             prefixText: prefix,
             suffixText: suffix,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 14,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
           ),
         ),
       ],
@@ -242,7 +260,8 @@ class CalculatorContent extends StatelessWidget {
     final double initial = double.tryParse(initialController.text) ?? 0;
     final double monthly = double.tryParse(monthlyController.text) ?? 0;
     final int months = int.tryParse(monthsController.text) ?? 0;
-    final double interest = (double.tryParse(interestController.text) ?? 0) / 100;
+    final double interest =
+        (double.tryParse(interestController.text) ?? 0) / 100;
 
     final List<FlSpot> spots = [];
     double total = initial;
