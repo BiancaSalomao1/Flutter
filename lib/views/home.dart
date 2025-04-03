@@ -96,8 +96,8 @@ class HomeContent extends StatelessWidget {
                   MaterialPageRoute(builder: (context) => const AlertPage()),
                 );
               },
-              child: const CircleAvatar(
-                backgroundImage: AssetImage('assets/profile.jpg'),
+              child: CircleAvatar(
+                backgroundImage: AssetImage('assets/bell.png'),
               ),
             ),
           ],
