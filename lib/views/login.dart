@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:appeducafin/views/forgot_password.dart';
 import 'package:appeducafin/views/home.dart';
 import 'package:appeducafin/views/register.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -34,13 +35,50 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
+  void _login() async {
     if (_formKey.currentState!.validate()) {
-      // Validação OK, navega para a HomePage
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
+      try {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+          email: emailController.text.trim(),
+          password: senhaController.text.trim(),
+        );
+
+        // Login OK, vai para a HomePage
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePage()),
+        );
+      } on FirebaseAuthException catch (e) {
+        String mensagemErro;
+        switch (e.code) {
+          case 'user-not-found':
+            mensagemErro = 'Usuário não encontrado.';
+            break;
+          case 'wrong-password':
+            mensagemErro = 'Senha incorreta.';
+            break;
+          default:
+            mensagemErro = 'Erro: ${e.message}';
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(mensagemErro)));
+        }
+
+        showDialog(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Erro de login'),
+                content: Text(mensagemErro),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+        );
+      }
     }
   }
 

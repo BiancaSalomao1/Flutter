@@ -1,5 +1,6 @@
-import 'package:appeducafin/views/login.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:appeducafin/views/login.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -19,22 +20,41 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         _isSending = true;
       });
 
-      // Simula chamada assíncrona (ex: API)
-      await Future.delayed(const Duration(seconds: 2));
+      try {
+        await FirebaseAuth.instance.sendPasswordResetEmail(
+          email: emailController.text.trim(),
+        );
 
-      setState(() {
-        _isSending = false;
-      });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Link de recuperação enviado para seu e-mail!')),
+        );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Link de recuperação enviado!')),
-      );
+        // Volta para tela de login
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      } on FirebaseAuthException catch (e) {
+        String erro = 'Erro: ${e.message}';
+        if (e.code == 'user-not-found') {
+          erro = 'Usuário não encontrado com este e-mail.';
+        }
 
-      // Opcional: voltar para a tela de login após envio
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
+        showDialog(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Text('Erro'),
+            content: Text(erro),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+            ],
+          ),
+        );
+      } finally {
+        setState(() {
+          _isSending = false;
+        });
+      }
     }
   }
 
@@ -57,9 +77,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     } else {
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const LoginScreen(),
-                        ),
+                        MaterialPageRoute(builder: (context) => const LoginScreen()),
                       );
                     }
                   },
@@ -110,9 +128,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: _isSending
-                        ? const CircularProgressIndicator(
-                            color: Colors.white,
-                          )
+                        ? const CircularProgressIndicator(color: Colors.white)
                         : const Text(
                             'Enviar link de recuperação',
                             style: TextStyle(fontSize: 16),

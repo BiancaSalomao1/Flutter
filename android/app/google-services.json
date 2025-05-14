@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "459515423999",
+    "project_id": "appfacul-2025",
+    "storage_bucket": "appfacul-2025.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:459515423999:android:2d0e383550a449abbab0ca",
+        "android_client_info": {
+          "package_name": "com.example.appeducafin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDaMWoJyIqfFLzeXyXQNRqPnBv4BQ0MApQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:459515423999:android:9b5edad7e34e33febab0ca",
+        "android_client_info": {
+          "package_name": "com.example.integra_firebase"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDaMWoJyIqfFLzeXyXQNRqPnBv4BQ0MApQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

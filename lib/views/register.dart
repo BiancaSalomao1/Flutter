@@ -1,5 +1,5 @@
-import 'package:appeducafin/views/login.dart'; // ajuste o caminho se necessário
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class CriarUsuarioScreen extends StatefulWidget {
   @override
@@ -26,31 +26,71 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
     super.dispose();
   }
 
-  void _salvarCadastro() {
-    if (_formKey.currentState!.validate() && _isChecked) {
-      // Simular salvamento e ir para a tela de login
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usuário criado com sucesso!')),
-      );
+  void _salvarCadastro() async {
+    if (_formKey.currentState!.validate()) {
+      if (!_isChecked) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Confirme que você não é um robô')),
+        );
+        return;
+      }
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
-    } else if (!_isChecked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Confirme que você não é um robô')),
-      );
-    }
+      try {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: emailController.text.trim(),
+          password: senhaController.text.trim(),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Usuário criado com sucesso!')),
+        );
+
+        Navigator.pop(context);
+} on FirebaseAuthException catch (e) {
+  String erro;
+  if (e.code == 'email-already-in-use') {
+    erro = 'Este email já está em uso.';
+  } else if (e.code == 'invalid-email') {
+    erro = 'Email inválido.';
+  } else if (e.code == 'weak-password') {
+    erro = 'A senha é muito fraca.';
+  } else {
+    erro = 'Erro ao registrar: ${e.code}';
   }
+
+        showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Erro'),
+      content: Text(erro),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+      ],
+    ),
+  );
+} catch (e) {
+  // Erros não Firebase
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Erro inesperado'),
+      content: Text(e.toString()),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+      ],
+    ),
+  );
+}
+  }
+}   
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Criar Usuário'),
+        title: const Text('Criar Usuário'),
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -62,7 +102,7 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
             children: [
               TextFormField(
                 controller: emailController,
-                decoration: InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Informe o email';
                   if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
@@ -74,14 +114,14 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: primeiroNomeController,
-                decoration: InputDecoration(labelText: 'Primeiro Nome', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Primeiro Nome', border: OutlineInputBorder()),
                 validator: (value) =>
                     (value == null || value.isEmpty) ? 'Informe o primeiro nome' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: sobrenomeController,
-                decoration: InputDecoration(labelText: 'Sobrenome', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Sobrenome', border: OutlineInputBorder()),
                 validator: (value) =>
                     (value == null || value.isEmpty) ? 'Informe o sobrenome' : null,
               ),
@@ -89,7 +129,7 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
               TextFormField(
                 controller: senhaController,
                 obscureText: true,
-                decoration: InputDecoration(labelText: 'Senha', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Senha', border: OutlineInputBorder()),
                 validator: (value) =>
                     (value == null || value.length < 6) ? 'Senha muito curta' : null,
               ),
@@ -97,7 +137,7 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
               TextFormField(
                 controller: confirmarSenhaController,
                 obscureText: true,
-                decoration: InputDecoration(labelText: 'Confirmar Senha', border: OutlineInputBorder()),
+                decoration: const InputDecoration(labelText: 'Confirmar Senha', border: OutlineInputBorder()),
                 validator: (value) {
                   if (value != senhaController.text) return 'As senhas não coincidem';
                   return null;
