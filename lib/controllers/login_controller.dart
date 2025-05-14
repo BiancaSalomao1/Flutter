@@ -48,44 +48,8 @@ class LoginController extends ChangeNotifier {
     limparCampos();
   }
 
-  //
-  // LOGIN
-  // Efetuar o login de um usuário previamente cadastrado
-  // no serviço Firebase Authentication
-  //
-  void login(context) {
-    //
-    // TO-DO
-    //
-    limparCampos();
-
-    /*  String message;
-      switch (e.code) {
-        case 'invalid-email':
-          message = 'O e-mail informado é inválido.';
-          break;
-        case 'user-disabled':
-          message = 'Este usuário foi desativado.';
-          break;
-        case 'user-not-found':
-          message = 'Usuário não encontrado.';
-          break;
-        case 'wrong-password':
-          message = 'Senha incorreta.';
-          break;
-        default:
-          message = 'Erro desconhecido: ${e.message}';
-      }
-      erro(context, message);
-      */
-  }
-
-  //
-  // ESQUECEU A SENHA
-  // Envia uma mensagem de email para recuperação de senha para
-  // um conta de email válida
-  //
-  void esqueceuSenha(context) {
+  
+    void esqueceuSenha(context) {
     auth
         .sendPasswordResetEmail(email: txtEmailEsqueceuSenha.text)
         .then((resultado) {
