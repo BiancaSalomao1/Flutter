@@ -1,1 +1,37 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"appfacul-2025","appId":"1:459515423999:android:2d0e383550a449abbab0ca","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"appfacul-2025","configurations":{"android":"1:459515423999:android:2d0e383550a449abbab0ca","ios":"1:459515423999:ios:94e3bb650e8fd40bbab0ca","web":"1:459515423999:web:311d5ecd1e66c669bab0ca"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "appfacul-2025",
+          "appId": "1:459515423999:android:2d0e383550a449abbab0ca",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "appfacul-2025",
+          "configurations": {
+            "android": "1:459515423999:android:2d0e383550a449abbab0ca",
+            "ios": "1:459515423999:ios:94e3bb650e8fd40bbab0ca",
+            "web": "1:459515423999:web:311d5ecd1e66c669bab0ca"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}
