@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 import 'package:appeducafin/services/api_service.dart';
 import 'package:appeducafin/models/investment_suggestion.dart';
 import 'package:appeducafin/views/calculator.dart';
+import 'package:provider/provider.dart';
+import '../controllers/quote_controller.dart';
 
 class InvestmentSuggestionsPage extends StatefulWidget {
   const InvestmentSuggestionsPage({super.key});
@@ -24,16 +26,17 @@ class _InvestmentSuggestionsPageState extends State<InvestmentSuggestionsPage> {
   Future<List<InvestmentSuggestion>> fetchSuggestions() async {
     try {
       final result = await apiService.getSuggestions();
-      print(" Recebido: ${result.length} sugestões");
       return result;
     } catch (e) {
-      print(" Erro Retrofit: $e");
+      print("Erro Retrofit: $e");
       rethrow;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final quoteController = Provider.of<QuoteController>(context);
+
     return Scaffold(
       body: SafeArea(
         child: FutureBuilder<List<InvestmentSuggestion>>(
@@ -64,7 +67,7 @@ class _InvestmentSuggestionsPageState extends State<InvestmentSuggestionsPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                ...suggestions.map((inv) => _buildCard(context, inv)).toList(),
+                ...suggestions.map((inv) => _buildCard(context, inv, quoteController)).toList(),
               ],
             );
           },
@@ -73,7 +76,7 @@ class _InvestmentSuggestionsPageState extends State<InvestmentSuggestionsPage> {
     );
   }
 
-  Widget _buildCard(BuildContext context, InvestmentSuggestion inv) {
+  Widget _buildCard(BuildContext context, InvestmentSuggestion inv, QuoteController quoteController) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
@@ -123,6 +126,30 @@ class _InvestmentSuggestionsPageState extends State<InvestmentSuggestionsPage> {
               style: const TextStyle(fontSize: 14),
             ),
           ),
+          const SizedBox(height: 8),
+          if (inv.symbol != null && inv.symbol!.isNotEmpty)
+            ElevatedButton(
+              onPressed: () async {
+                await quoteController.fetchQuote(inv.symbol!);
+                if (quoteController.quoteData != null) {
+                  final price = quoteController.quoteData!['close'];
+                  showDialog(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: Text('Cotação - ${inv.symbol}'),
+                      content: Text('Valor atual: R\$ $price'),
+                      actions: [
+                        TextButton(
+                          child: const Text('Fechar'),
+                          onPressed: () => Navigator.of(context).pop(),
+                        )
+                      ],
+                    ),
+                  );
+                }
+              },
+              child: Text('Ver cotação de ${inv.symbol}'),
+            ),
         ],
       ),
     );

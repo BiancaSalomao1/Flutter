@@ -10,6 +10,7 @@ class InvestmentSuggestion {
   final int months;
   final String tax;
   final String fee;
+  final String? symbol;
 
   InvestmentSuggestion({
     required this.title,
@@ -18,6 +19,7 @@ class InvestmentSuggestion {
     required this.months,
     required this.tax,
     required this.fee,
+    this.symbol,
   });
 
   factory InvestmentSuggestion.fromJson(Map<String, dynamic> json) =>
@@ -25,4 +27,3 @@ class InvestmentSuggestion {
 
   Map<String, dynamic> toJson() => _$InvestmentSuggestionToJson(this);
 }
-

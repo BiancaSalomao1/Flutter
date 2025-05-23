@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'goal_form.dart';
+import 'package:provider/provider.dart';
+import '../controllers/goal_controller.dart';
+
 
 class GoalsPage extends StatelessWidget {
   const GoalsPage({super.key});
 
-  @override
+  @overridedHe
   Widget build(BuildContext context) {
     return Scaffold(
       body: const GoalsContent(),
@@ -21,7 +25,7 @@ class GoalsContent extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            _buildHeader(),
+            _buildHeader(context),
             const SizedBox(height: 16),
             Expanded(
               child: ListView(
@@ -60,15 +64,24 @@ class GoalsContent extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: const [
-        Text('Metas', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        Icon(Icons.add_circle_outline, size: 28),
-      ],
-    );
-  }
+  Widget _buildHeader(BuildContext context) {
+  return Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      const Text('Metas', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+      IconButton(
+        icon: const Icon(Icons.add_circle_outline, size: 28),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => GoalForm()),
+          );
+        },
+      ),
+    ],
+  );
+}
+
 
   Widget _buildGoalGroup({
     required String title,

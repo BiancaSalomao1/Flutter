@@ -15,6 +15,7 @@ InvestmentSuggestion _$InvestmentSuggestionFromJson(
       months: (json['months'] as num).toInt(),
       tax: json['tax'] as String,
       fee: json['fee'] as String,
+      symbol: json['symbol'] as String?,
     );
 
 Map<String, dynamic> _$InvestmentSuggestionToJson(
@@ -26,4 +27,5 @@ Map<String, dynamic> _$InvestmentSuggestionToJson(
       'months': instance.months,
       'tax': instance.tax,
       'fee': instance.fee,
+      'symbol': instance.symbol,
     };
