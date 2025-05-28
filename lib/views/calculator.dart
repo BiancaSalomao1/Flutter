@@ -29,27 +29,33 @@ class _CalculatorPageState extends State<CalculatorPage> {
   double _finalAmount = 0;
   double _totalInvested = 0;
   double _totalInterest = 0;
+  List<FlSpot> _chartData = [];
 
   @override
   void initState() {
     super.initState();
-    _initialController.text =
-        widget.initialAmount?.toStringAsFixed(0) ?? '38000';
+    _initialController.text = widget.initialAmount?.toStringAsFixed(0) ?? '38000';
     _monthsController.text = widget.months?.toString() ?? '120';
-    _interestController.text =
-        widget.interestRate?.toStringAsFixed(2) ?? '1.03';
+    _interestController.text = widget.interestRate?.toStringAsFixed(2) ?? '1.03';
+    _calculate(); // Calcula automaticamente ao abrir a tela
   }
 
   void _calculate() {
     final double initial = double.tryParse(_initialController.text) ?? 0;
     final double monthly = double.tryParse(_monthlyController.text) ?? 0;
     final int months = int.tryParse(_monthsController.text) ?? 0;
-    final double interest =
-        (double.tryParse(_interestController.text) ?? 0) / 100;
+    final double interest = (double.tryParse(_interestController.text) ?? 0) / 100;
 
     double total = initial;
-    for (int i = 0; i < months; i++) {
-      total = total * (1 + interest) + monthly;
+    final List<FlSpot> spots = [];
+    final int interval = max(1, months ~/ 6);
+
+    for (int i = 0; i <= months; i += interval) {
+      total = initial;
+      for (int j = 0; j < i; j++) {
+        total = total * (1 + interest) + monthly;
+      }
+      spots.add(FlSpot(i.toDouble(), total));
     }
 
     final double totalInvested = initial + (monthly * months);
@@ -59,6 +65,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
       _finalAmount = total;
       _totalInvested = totalInvested;
       _totalInterest = interestGained;
+      _chartData = spots;
     });
   }
 
@@ -83,6 +90,7 @@ class _CalculatorPageState extends State<CalculatorPage> {
         finalAmount: _finalAmount,
         totalInvested: _totalInvested,
         totalInterest: _totalInterest,
+        chartData: _chartData,
         onCalculate: _calculate,
       ),
     );
@@ -98,6 +106,7 @@ class CalculatorContent extends StatelessWidget {
   final double finalAmount;
   final double totalInvested;
   final double totalInterest;
+  final List<FlSpot> chartData;
   final VoidCallback onCalculate;
 
   const CalculatorContent({
@@ -110,6 +119,7 @@ class CalculatorContent extends StatelessWidget {
     required this.finalAmount,
     required this.totalInvested,
     required this.totalInterest,
+    required this.chartData,
     required this.onCalculate,
   });
 
@@ -132,7 +142,7 @@ class CalculatorContent extends StatelessWidget {
             const SizedBox(height: 8),
             _buildInput('TAXA DE JUROS (a.m)', interestController, suffix: '%'),
             const SizedBox(height: 16),
-            _buildEstimateBox(),
+            _buildEstimateBox(context),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: onCalculate,
@@ -146,8 +156,6 @@ class CalculatorContent extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _buildChart(),
-            const SizedBox(height: 16),
-            _buildFundTile(),
             const SizedBox(height: 16),
             _buildSummary(),
           ],
@@ -171,7 +179,6 @@ class CalculatorContent extends StatelessWidget {
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
         ),
-
         const Icon(Icons.calculate_outlined, size: 30),
       ],
     );
@@ -196,10 +203,7 @@ class CalculatorContent extends StatelessWidget {
             fillColor: Colors.grey.shade200,
             prefixText: prefix,
             suffixText: suffix,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 14,
-            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,
@@ -210,26 +214,42 @@ class CalculatorContent extends StatelessWidget {
     );
   }
 
-  Widget _buildEstimateBox() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            'R\$ ${finalAmount.toStringAsFixed(2)}',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const Icon(Icons.add_circle_outline),
-        ],
-      ),
-    );
-  }
+  Widget _buildEstimateBox(BuildContext context) {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+    decoration: BoxDecoration(
+      color: Colors.grey.shade100,
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: Colors.grey.shade300),
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'R\$ ${finalAmount.toStringAsFixed(2)}',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        IconButton(
+          icon: const Icon(Icons.add_circle_outline),
+          onPressed: () {
+            Navigator.pushNamed(
+              context,
+              '/goals',
+              arguments: {
+                'initial': double.tryParse(initialController.text) ?? 0,
+                'monthly': double.tryParse(monthlyController.text) ?? 0,
+                'months': int.tryParse(monthsController.text) ?? 0,
+                'rate': double.tryParse(interestController.text) ?? 0,
+                'finalAmount': finalAmount,
+              },
+            );
+          },
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildChart() {
     return SizedBox(
@@ -241,7 +261,7 @@ class CalculatorContent extends StatelessWidget {
           borderData: FlBorderData(show: false),
           lineBarsData: [
             LineChartBarData(
-              spots: _generateChartData(),
+              spots: chartData,
               isCurved: true,
               color: Colors.black,
               barWidth: 4,
@@ -252,45 +272,6 @@ class CalculatorContent extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  List<FlSpot> _generateChartData() {
-    final double initial = double.tryParse(initialController.text) ?? 0;
-    final double monthly = double.tryParse(monthlyController.text) ?? 0;
-    final int months = int.tryParse(monthsController.text) ?? 0;
-    final double interest =
-        (double.tryParse(interestController.text) ?? 0) / 100;
-
-    final List<FlSpot> spots = [];
-    double total = initial;
-
-    final int interval = max(1, months ~/ 6);
-    for (int i = 0; i <= months; i += interval) {
-      total = initial;
-      for (int j = 0; j < i; j++) {
-        total = total * (1 + interest) + monthly;
-      }
-      spots.add(FlSpot(i.toDouble(), total));
-    }
-
-    return spots;
-  }
-
-  Widget _buildFundTile() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.purple.shade50,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: const [
-          Icon(Icons.show_chart, color: Colors.purple),
-          SizedBox(width: 12),
-          Text('Fundo CDI 105%', style: TextStyle(fontSize: 16)),
-        ],
       ),
     );
   }

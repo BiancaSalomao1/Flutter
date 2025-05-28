@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'goal_form.dart';
-import 'package:provider/provider.dart';
-import '../controllers/goal_controller.dart';
+
 
 
 class GoalsPage extends StatelessWidget {
   const GoalsPage({super.key});
 
-  @overridedHe
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: const GoalsContent(),
@@ -74,7 +73,7 @@ class GoalsContent extends StatelessWidget {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => GoalForm()),
+            MaterialPageRoute(builder: (context) => GoalFormPage()),
           );
         },
       ),

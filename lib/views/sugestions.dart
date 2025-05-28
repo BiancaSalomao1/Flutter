@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
-import 'package:appeducafin/services/api_service.dart';
-import 'package:appeducafin/models/investment_suggestion.dart';
-import 'package:appeducafin/views/calculator.dart';
-import 'package:provider/provider.dart';
-import '../controllers/quote_controller.dart';
+import '../models/investment_suggestion.dart';
+import '../models/investment_suggestions_local.dart';
+import '../services/api_service.dart';
+import 'calculator.dart';
 
 class InvestmentSuggestionsPage extends StatefulWidget {
   const InvestmentSuggestionsPage({super.key});
@@ -14,69 +12,96 @@ class InvestmentSuggestionsPage extends StatefulWidget {
 }
 
 class _InvestmentSuggestionsPageState extends State<InvestmentSuggestionsPage> {
-  late final ApiService apiService;
-
-  @override
-  void initState() {
-    super.initState();
-    final dio = Dio();
-    apiService = ApiService(dio);
-  }
-
-  Future<List<InvestmentSuggestion>> fetchSuggestions() async {
-    try {
-      final result = await apiService.getSuggestions();
-      return result;
-    } catch (e) {
-      print("Erro Retrofit: $e");
-      rethrow;
-    }
-  }
+  final ApiService apiService = ApiService();
+  final TextEditingController _symbolController = TextEditingController();
+  Map<String, dynamic>? searchedQuote;
+  String? searchedSymbol;
 
   @override
   Widget build(BuildContext context) {
-    final quoteController = Provider.of<QuoteController>(context);
-
     return Scaffold(
       body: SafeArea(
-        child: FutureBuilder<List<InvestmentSuggestion>>(
-          future: fetchSuggestions(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (snapshot.hasError) {
-              return Center(child: Text('Erro: ${snapshot.error}'));
-            } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return const Center(child: Text('Nenhuma sugestão encontrada.'));
-            }
-
-            final suggestions = snapshot.data!;
-            return ListView(
-              padding: const EdgeInsets.all(16),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const Text(
-                      'Sugestões de Investimentos',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.pop(context),
                 ),
-                const SizedBox(height: 16),
-                ...suggestions.map((inv) => _buildCard(context, inv, quoteController)).toList(),
+                const Text(
+                  'Sugestões de Investimentos',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
               ],
-            );
-          },
+            ),
+            const SizedBox(height: 16),
+
+            // Sugestões locais
+            ...localSuggestions.map((inv) => _buildCard(context, inv)).toList(),
+
+            const Divider(),
+            const SizedBox(height: 12),
+
+            // Campo para pesquisar ativo manualmente
+            const Text(
+              'Buscar Ativo Manualmente:',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _symbolController,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Símbolo do ativo (ex: NU)',
+              ),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () async {
+                final symbol = _symbolController.text.trim().toUpperCase();
+                if (symbol.isEmpty) return;
+                final quote = await apiService.fetchQuote(symbol);
+                setState(() {
+                  searchedQuote = quote;
+                  searchedSymbol = symbol;
+                });
+              },
+              child: const Text('Ver Cotação'),
+            ),
+
+            if (searchedQuote != null && searchedQuote!['close'] != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Cotação de $searchedSymbol: R\$ ${searchedQuote!['close']}',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('Adicionar à Calculadora'),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CalculatorPage(
+                        initialAmount: double.tryParse(searchedQuote!['close']) ?? 0,
+                        months: 12,
+                        interestRate: 1.0,
+                      ),
+                    ),
+                  );
+                },
+              )
+            ]
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildCard(BuildContext context, InvestmentSuggestion inv, QuoteController quoteController) {
+  Widget _buildCard(BuildContext context, InvestmentSuggestion inv) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
@@ -130,14 +155,13 @@ class _InvestmentSuggestionsPageState extends State<InvestmentSuggestionsPage> {
           if (inv.symbol != null && inv.symbol!.isNotEmpty)
             ElevatedButton(
               onPressed: () async {
-                await quoteController.fetchQuote(inv.symbol!);
-                if (quoteController.quoteData != null) {
-                  final price = quoteController.quoteData!['close'];
+                final data = await apiService.fetchQuote(inv.symbol!);
+                if (data != null && data['close'] != null) {
                   showDialog(
                     context: context,
                     builder: (_) => AlertDialog(
                       title: Text('Cotação - ${inv.symbol}'),
-                      content: Text('Valor atual: R\$ $price'),
+                      content: Text('Valor atual: R\$ ${data['close']}'),
                       actions: [
                         TextButton(
                           child: const Text('Fechar'),
@@ -145,6 +169,10 @@ class _InvestmentSuggestionsPageState extends State<InvestmentSuggestionsPage> {
                         )
                       ],
                     ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Erro ao buscar cotação')),
                   );
                 }
               },

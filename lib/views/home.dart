@@ -8,6 +8,9 @@ import 'package:appeducafin/views/historical.dart';
 import 'package:appeducafin/views/sugestions.dart';
 import 'package:flutter/material.dart';
 import 'package:appeducafin/views/statistic.dart';
+import 'package:provider/provider.dart';
+import '../controllers/quote_controller.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -149,7 +152,11 @@ class HomeContent extends StatelessWidget {
                     () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const InvestmentSuggestionsPage(),
+                        builder:
+                            (_) => ChangeNotifierProvider(
+                              create: (_) => QuoteController(),
+                              child:  InvestmentSuggestionsPage(),
+                            ),
                       ),
                     ),
                   ),

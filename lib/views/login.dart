@@ -50,6 +50,10 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } on FirebaseAuthException catch (e) {
         String mensagemErro;
+
+        
+        print('Código de erro Firebase: ${e.code}');
+
         switch (e.code) {
           case 'user-not-found':
             mensagemErro = 'Usuário não encontrado.';
@@ -57,19 +61,36 @@ class _LoginScreenState extends State<LoginScreen> {
           case 'wrong-password':
             mensagemErro = 'Senha incorreta.';
             break;
+          case 'invalid-email':
+            mensagemErro = 'E-mail inválido.';
+            break;
+          case 'invalid-credential':
+            mensagemErro = 'Credencial inválida ou expirada.';
+            break;
+          case 'user-disabled':
+            mensagemErro = 'Conta desativada. Contate o suporte.';
+            break;
+          case 'too-many-requests':
+            mensagemErro = 'Muitas tentativas. Tente novamente mais tarde.';
+            break;
+          case 'network-request-failed':
+            mensagemErro = 'Sem conexão. Verifique sua internet.';
+            break;
           default:
-            mensagemErro = 'Erro: ${e.message}';
-            ScaffoldMessenger.of(
-              context,
-            ).showSnackBar(SnackBar(content: Text(mensagemErro)));
+            mensagemErro = 'Erro desconhecido. Código: ${e.code}';
+            break;
         }
 
+        // Exibe o erro no AlertDialog
         showDialog(
           context: context,
           builder:
               (context) => AlertDialog(
                 title: const Text('Erro de login'),
-                content: Text(mensagemErro),
+                content: Text(
+                  mensagemErro,
+                  style: const TextStyle(fontSize: 16),
+                ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),

@@ -16,7 +16,7 @@ void main() async{
   runApp(
     
     DevicePreview(
-      enabled: false, // Habilita o DevicePreview
+      enabled: true, // Habilita o DevicePreview
       builder: (context) => MyApp(),
     ),
   );
