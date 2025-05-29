@@ -6,11 +6,11 @@ import 'package:appeducafin/views/educational.dart';
 import 'package:appeducafin/views/goals.dart';
 import 'package:appeducafin/views/historical.dart';
 import 'package:appeducafin/views/sugestions.dart';
-import 'package:flutter/material.dart';
 import 'package:appeducafin/views/statistic.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../controllers/quote_controller.dart';
-
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -59,6 +59,16 @@ class _HomePageState extends State<HomePage> {
 
 class HomeContent extends StatelessWidget {
   const HomeContent({super.key});
+
+  Future<double> _fetchTotalMetas() async {
+    final snapshot = await FirebaseFirestore.instance.collection('goals').get();
+    double total = 0;
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      total += (data['monthlyContribution'] ?? 0).toDouble();
+    }
+    return total;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -111,12 +121,19 @@ class HomeContent extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildCard('Metas Mensal', 'R\$5.982,00', Colors.black),
-                _buildCard('Juros Compostos', 'R\$982,00', Colors.pinkAccent),
-              ],
+            FutureBuilder<double>(
+              future: _fetchTotalMetas(),
+              builder: (context, snapshot) {
+                final metas = snapshot.data ?? 0;
+                final juros = metas * 0.2; // Exemplo de estimativa de juros
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildCard('Metas Mensal', 'R\$${metas.toStringAsFixed(2)}', Colors.black),
+                    _buildCard('Juros Compostos', 'R\$${juros.toStringAsFixed(2)}', Colors.pinkAccent),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 20),
             const Text(
@@ -128,60 +145,33 @@ class HomeContent extends StatelessWidget {
               child: ListView(
                 children: [
                   _buildMenuItem(Icons.shield, 'Metas', () => navigateTo(1)),
-
-                  _buildMenuItem(
-                    Icons.bar_chart,
-                    'Estatísticas',
-                    () => navigateTo(2),
-                  ),
-
-                  _buildMenuItem(
-                    Icons.school,
-                    'Conteúdo Educacional',
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const EducationalContentPage(),
-                      ),
-                    ),
-                  ),
-
-                  _buildMenuItem(
-                    Icons.note_alt,
-                    'Sugestões',
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => ChangeNotifierProvider(
-                              create: (_) => QuoteController(),
-                              child:  InvestmentSuggestionsPage(),
-                            ),
-                      ),
-                    ),
-                  ),
-
-                  _buildMenuItem(
-                    Icons.list,
-                    'Histórico',
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const HistoricalPage(),
-                      ),
-                    ),
-                  ),
-
-                  _buildMenuItem(
-                    Icons.nordic_walking,
-                    'Sobre Nós',
-                    () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AboutPage(),
-                      ),
-                    ),
-                  ),
+                  _buildMenuItem(Icons.bar_chart, 'Estatísticas', () => navigateTo(2)),
+                  _buildMenuItem(Icons.school, 'Conteúdo Educacional', () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const EducationalContentPage()),
+                      )),
+                  _buildMenuItem(Icons.note_alt, 'Sugestões', () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChangeNotifierProvider(
+                            create: (_) => QuoteController(),
+                            child: InvestmentSuggestionsPage(),
+                          ),
+                        ),
+                      )),
+                  _buildMenuItem(Icons.list, 'Histórico', () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HistoricalPage(),
+                        ),
+                      )),
+                  _buildMenuItem(Icons.nordic_walking, 'Sobre Nós', () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AboutPage(),
+                        ),
+                      )),
                 ],
               ),
             ),

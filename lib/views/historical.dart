@@ -1,23 +1,38 @@
 import 'package:flutter/material.dart';
 
 class HistoricalPage extends StatelessWidget {
-  const HistoricalPage({super.key});
+  final String? title;
+  final double? monthlyAmount;
+  final int? months;
+
+  const HistoricalPage({
+    super.key,
+    this.title,
+    this.monthlyAmount,
+    this.months,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final List<HistoryItem> historyList = [
-      HistoryItem(month: 'OUTUBRO 2024', amount: 800, status: HistoryStatus.pending),
-      HistoryItem(month: 'SETEMBRO 2024', amount: 800, status: HistoryStatus.done),
-      HistoryItem(month: 'AGOSTO 2024', amount: 800, status: HistoryStatus.done),
-      HistoryItem(month: 'JULHO 2024', amount: 800, status: HistoryStatus.missed),
-      HistoryItem(month: 'JUNHO 2024', amount: 800, status: HistoryStatus.done),
-      HistoryItem(month: 'MAIO 2024', amount: 800, status: HistoryStatus.done),
-      HistoryItem(month: 'ABRIL 2024', amount: 800, status: HistoryStatus.done),
-      HistoryItem(month: 'MARÇO 2024', amount: 800, status: HistoryStatus.done),
-      HistoryItem(month: 'FEVEREIRO 2024', amount: 800, status: HistoryStatus.done),
-      HistoryItem(month: 'JANEIRO 2024', amount: 800, status: HistoryStatus.missed),
-      HistoryItem(month: 'DEZEMBRO 2023', amount: 800, status: HistoryStatus.done),
-    ];
+    if (title == null || monthlyAmount == null || months == null) {
+      return Scaffold(
+        body: const Center(
+          child: Text('Nenhuma meta foi adicionada ainda.'),
+        ),
+      );
+    }
+
+    final List<HistoryItem> historyList = List.generate(months!, (index) {
+      final date = DateTime.now().subtract(Duration(days: 30 * index));
+      final month = _formatMonthYear(date);
+      final status = index == 0
+          ? HistoryStatus.pending
+          : index % 4 == 0
+              ? HistoryStatus.missed
+              : HistoryStatus.done;
+
+      return HistoryItem(month: month, amount: monthlyAmount!, status: status);
+    });
 
     return Scaffold(
       body: SafeArea(
@@ -72,16 +87,16 @@ class HistoricalPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
-        children: const [
-          Icon(Icons.show_chart, color: Colors.purple),
-          SizedBox(width: 12),
+        children: [
+          const Icon(Icons.show_chart, color: Colors.purple),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'CDB Banco C3\nMultimercado',
-              style: TextStyle(fontSize: 16),
+              title!,
+              style: const TextStyle(fontSize: 16),
             ),
           ),
-          Icon(Icons.expand_more),
+          const Icon(Icons.expand_more),
         ],
       ),
     );
@@ -123,44 +138,50 @@ class HistoricalPage extends StatelessWidget {
     );
   }
 
- void _showPrintDialog(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      backgroundColor: Colors.deepPurple.shade900,
-      contentPadding: const EdgeInsets.all(24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            onTap: () {
-              Navigator.pop(context);
-              // TODO: lógica para exportar como PDF
-            },
-            leading: const Icon(Icons.picture_as_pdf, color: Colors.white),
-            title: const Text(
-              'SALVAR COMO PDF',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+  void _showPrintDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.deepPurple.shade900,
+        contentPadding: const EdgeInsets.all(24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              onTap: () {
+                Navigator.pop(context);
+              },
+              leading: const Icon(Icons.picture_as_pdf, color: Colors.white),
+              title: const Text(
+                'SALVAR COMO PDF',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
             ),
-          ),
-          const Divider(color: Colors.white24),
-          ListTile(
-            onTap: () {
-              Navigator.pop(context);
-              // TODO: lógica para imprimir
-            },
-            leading: const Icon(Icons.print, color: Colors.white),
-            title: const Text(
-              'IMPRIMIR NA IMPRESSORA LOCAL',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+            const Divider(color: Colors.white24),
+            ListTile(
+              onTap: () {
+                Navigator.pop(context);
+              },
+              leading: const Icon(Icons.print, color: Colors.white),
+              title: const Text(
+                'IMPRIMIR NA IMPRESSORA LOCAL',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
+
+  String _formatMonthYear(DateTime date) {
+    const months = [
+      'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
+      'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'
+    ];
+    return '${months[date.month - 1]} ${date.year}';
+  }
 }
 
 // Enum para status

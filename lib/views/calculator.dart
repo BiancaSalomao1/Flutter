@@ -1,3 +1,4 @@
+import 'package:appeducafin/views/goals.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math';
@@ -34,17 +35,20 @@ class _CalculatorPageState extends State<CalculatorPage> {
   @override
   void initState() {
     super.initState();
-    _initialController.text = widget.initialAmount?.toStringAsFixed(0) ?? '38000';
+    _initialController.text =
+        widget.initialAmount?.toStringAsFixed(0) ?? '38000';
     _monthsController.text = widget.months?.toString() ?? '120';
-    _interestController.text = widget.interestRate?.toStringAsFixed(2) ?? '1.03';
-    _calculate(); // Calcula automaticamente ao abrir a tela
+    _interestController.text =
+        widget.interestRate?.toStringAsFixed(2) ?? '1.03';
+    _calculate();
   }
 
   void _calculate() {
     final double initial = double.tryParse(_initialController.text) ?? 0;
     final double monthly = double.tryParse(_monthlyController.text) ?? 0;
     final int months = int.tryParse(_monthsController.text) ?? 0;
-    final double interest = (double.tryParse(_interestController.text) ?? 0) / 100;
+    final double interest =
+        (double.tryParse(_interestController.text) ?? 0) / 100;
 
     double total = initial;
     final List<FlSpot> spots = [];
@@ -203,7 +207,10 @@ class CalculatorContent extends StatelessWidget {
             fillColor: Colors.grey.shade200,
             prefixText: prefix,
             suffixText: suffix,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide.none,
@@ -215,41 +222,51 @@ class CalculatorContent extends StatelessWidget {
   }
 
   Widget _buildEstimateBox(BuildContext context) {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
-    decoration: BoxDecoration(
-      color: Colors.grey.shade100,
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: Colors.grey.shade300),
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'R\$ ${finalAmount.toStringAsFixed(2)}',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        IconButton(
-          icon: const Icon(Icons.add_circle_outline),
-          onPressed: () {
-            Navigator.pushNamed(
-              context,
-              '/goals',
-              arguments: {
-                'initial': double.tryParse(initialController.text) ?? 0,
-                'monthly': double.tryParse(monthlyController.text) ?? 0,
-                'months': int.tryParse(monthsController.text) ?? 0,
-                'rate': double.tryParse(interestController.text) ?? 0,
-                'finalAmount': finalAmount,
-              },
-            );
-          },
-        ),
-      ],
-    ),
-  );
-}
+    final double initial = double.tryParse(initialController.text) ?? 0;
+    final double monthly = double.tryParse(monthlyController.text) ?? 0;
+    final int months = int.tryParse(monthsController.text) ?? 0;
+    final double rate = double.tryParse(interestController.text) ?? 0;
+    final double result = finalAmount;
 
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'R\$ ${finalAmount.toStringAsFixed(2)}',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (_) => GoalsPage(
+                        data: {
+                          'initial': initial,
+                          'monthly': monthly,
+                          'months': months,
+                          'rate': rate,
+                          'finalAmount': result,
+                          'category': 'Meta Personalizada',
+                        },
+                      ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildChart() {
     return SizedBox(

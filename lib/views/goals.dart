@@ -1,152 +1,184 @@
 import 'package:flutter/material.dart';
-import 'goal_form.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-
-
-class GoalsPage extends StatelessWidget {
-  const GoalsPage({super.key});
+class GoalsPage extends StatefulWidget {
+  final Map<String, dynamic>? data;
+  const GoalsPage({super.key, this.data});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: const GoalsContent(),
-    );
-  }
+  State<GoalsPage> createState() => _GoalsPageState();
 }
 
-class GoalsContent extends StatelessWidget {
-  const GoalsContent({super.key});
+class _GoalsPageState extends State<GoalsPage> {
+  final Map<String, List<Map<String, dynamic>>> categorizedGoals = {};
+  bool _isLoading = true;
 
   @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildHeader(context),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView(
-                children: [
-                  _buildGoalGroup(
-                    title: 'APOSENTADORIA',
-                    color: Colors.orange,
-                    suggestions: [
-                      'CDB Banco C3\nMultimercado',
-                      'Tesouro Direto\n2026',
-                      'FII trimestral',
-                    ],
-                    resumo: const {
-                      'Aportes': 'R\$ 108.830,00',
-                      'Juros': 'R\$1.348,09',
-                      'Tempo': '38 meses'
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  _buildGoalGroup(
-                    title: 'CASA PRÓPRIA',
-                    color: Colors.red,
-                    suggestions: ['Fundo CDI 105%'],
-                    resumo: const {
-                      'Aportes': 'R\$ 12.000,00',
-                      'Juros': 'R\$300,00',
-                      'Tempo': '12 meses'
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
+  void initState() {
+    super.initState();
+    _initFirebaseAndLoadGoals();
+  }
+
+  Future<void> _initFirebaseAndLoadGoals() async {
+    try {
+      await Firebase.initializeApp(); // Garante que Firebase está inicializado
+      print('✅ Firebase inicializado');
+      await _loadGoals();
+    } catch (e) {
+      print('❌ Erro ao inicializar Firebase: $e');
+    }
+  }
+
+  Future<void> _loadGoals() async {
+    try {
+      categorizedGoals.clear();
+
+      final snapshot = await FirebaseFirestore.instance.collection('goals').get();
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        final category = data['category'] ?? 'Meta Padrão';
+        categorizedGoals[category] = [...(categorizedGoals[category] ?? []), data];
+      }
+
+      // Se nova meta vier da calculadora, salva no banco
+      if (widget.data != null) {
+        final doc = await FirebaseFirestore.instance.collection('goals').add(widget.data!);
+        final newGoal = {...widget.data!, 'id': doc.id};
+        final category = newGoal['category'] ?? 'Meta Padrão';
+        categorizedGoals[category] = [...(categorizedGoals[category] ?? []), newGoal];
+        print('✅ Meta salva: $newGoal');
+      }
+
+      setState(() => _isLoading = false);
+    } catch (e) {
+      print('❌ Erro ao carregar metas: $e');
+    }
+  }
+
+  Future<void> _deleteGoal(String id, String category) async {
+    try {
+      await FirebaseFirestore.instance.collection('goals').doc(id).delete();
+      setState(() {
+        categorizedGoals[category]?.removeWhere((goal) => goal['id'] == id);
+      });
+      print('🗑️ Meta deletada: $id');
+    } catch (e) {
+      print('❌ Erro ao deletar meta: $e');
+    }
+  }
+
+  void _addCategory() {
+    String newTitle = '';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Nova categoria'),
+        content: TextField(
+          onChanged: (value) => newTitle = value,
+          decoration: const InputDecoration(hintText: 'Ex: Viagem'),
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-  return Row(
-    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-    children: [
-      const Text('Metas', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-      IconButton(
-        icon: const Icon(Icons.add_circle_outline, size: 28),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => GoalFormPage()),
-          );
-        },
-      ),
-    ],
-  );
-}
-
-
-  Widget _buildGoalGroup({
-    required String title,
-    required Color color,
-    required List<String> suggestions,
-    required Map<String, String> resumo,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildMainGoal(title, color),
-        const SizedBox(height: 8),
-        ...suggestions.map(_buildSuggestionItem).toList(),
-        const SizedBox(height: 8),
-        _buildResumo(resumo),
-      ],
-    );
-  }
-
-  Widget _buildMainGoal(String title, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.widgets, color: color),
-          const SizedBox(width: 12),
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (newTitle.trim().isNotEmpty && !categorizedGoals.containsKey(newTitle)) {
+                setState(() => categorizedGoals[newTitle.trim()] = []);
+              }
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('OK'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSuggestionItem(String name) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.purple.shade50,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.show_chart, color: Colors.purple),
-          const SizedBox(width: 12),
-          Expanded(child: Text(name, style: const TextStyle(fontSize: 14))),
-          const Icon(Icons.remove_circle_outline),
-        ],
-      ),
-    );
+  void _updateGoalCategory(String oldCategory, Map<String, dynamic> goal, String newCategory) async {
+    final id = goal['id'];
+    if (id != null) {
+      await FirebaseFirestore.instance.collection('goals').doc(id).update({'category': newCategory});
+      setState(() {
+        categorizedGoals[oldCategory]?.remove(goal);
+        goal['category'] = newCategory;
+        categorizedGoals[newCategory] = [...(categorizedGoals[newCategory] ?? []), goal];
+      });
+    }
   }
 
-  Widget _buildResumo(Map<String, String> resumo) {
-    return Align(
-      alignment: Alignment.centerRight,
-      child: Text(
-        'RESUMO\n'
-        'Aportes: ${resumo['Aportes']}\n'
-        'Juros: ${resumo['Juros']}\n'
-        'Tempo: ${resumo['Tempo']}',
-        textAlign: TextAlign.right,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Metas'),
+        actions: [
+          IconButton(onPressed: _addCategory, icon: const Icon(Icons.add)),
+        ],
       ),
+      body: categorizedGoals.isEmpty
+          ? const Center(child: Text('Nenhuma meta cadastrada ainda.'))
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: categorizedGoals.entries.map((entry) {
+                final title = entry.key;
+                final goals = entry.value;
+
+                return DragTarget<Map<String, dynamic>>(
+                  onAccept: (goal) {
+                    final oldCategory = goal['category'];
+                    _updateGoalCategory(oldCategory, goal, title);
+                  },
+                  builder: (context, _, __) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      ...goals.map((goal) {
+                        final aporte = goal['initial'] + (goal['monthly'] * goal['months']);
+                        final juros = goal['finalAmount'] - aporte;
+
+                        return Draggable<Map<String, dynamic>>(
+                          data: goal,
+                          feedback: Material(
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              color: Colors.blue,
+                              child: Text(goal['category'] ?? 'Meta', style: const TextStyle(color: Colors.white)),
+                            ),
+                          ),
+                          childWhenDragging: const SizedBox.shrink(),
+                          child: Card(
+                            child: ListTile(
+                              title: Text(goal['category'] ?? 'Meta'),
+                              subtitle: Text(
+                                'Montante: R\$ ${goal['finalAmount'].toStringAsFixed(2)}\n'
+                                'Aportes: R\$ ${aporte.toStringAsFixed(2)}\n'
+                                'Juros: R\$ ${juros.toStringAsFixed(2)}\n'
+                                'Tempo: ${goal['months']} meses',
+                              ),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () {
+                                  _deleteGoal(goal['id'], title);
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
     );
   }
 }

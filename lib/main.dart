@@ -1,4 +1,5 @@
 import 'package:appeducafin/firebase_options.dart';
+import 'package:appeducafin/views/home.dart';
 import 'package:appeducafin/views/login.dart';
 import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
@@ -25,11 +26,18 @@ void main() async{
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  @override
+  // @override
+  // Widget build(BuildContext context) {
+  //   return MaterialApp(
+  //   debugShowCheckedModeBanner: false,
+  //     home:LoginScreen(),
+  //   );
+  // }
+   @override
   Widget build(BuildContext context) {
     return MaterialApp(
     debugShowCheckedModeBanner: false,
-      home:LoginScreen(),
+      home:HomePage(),
     );
   }
 }
