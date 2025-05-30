@@ -1,201 +1,257 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class HistoricalPage extends StatelessWidget {
-  final String? title;
-  final double? monthlyAmount;
-  final int? months;
-
-  const HistoricalPage({
-    super.key,
-    this.title,
-    this.monthlyAmount,
-    this.months,
-  });
+class HistoricalPage extends StatefulWidget {
+  const HistoricalPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    if (title == null || monthlyAmount == null || months == null) {
-      return Scaffold(
-        body: const Center(
-          child: Text('Nenhuma meta foi adicionada ainda.'),
+  State<HistoricalPage> createState() => _HistoricalPageState();
+}
+
+class _HistoricalPageState extends State<HistoricalPage> {
+  bool _loading = true;
+  List<GoalHistoryModel> _goals = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAllGoalsAndHistory();
+  }
+
+  Future<void> _loadAllGoalsAndHistory() async {
+    final goalsSnapshot =
+        await FirebaseFirestore.instance.collection('goals').get();
+    final List<GoalHistoryModel> goalsWithHistory = [];
+
+    for (var doc in goalsSnapshot.docs) {
+      final data = doc.data();
+      final goalId = doc.id;
+      final monthly = (data['monthly'] as num).toDouble();
+      final title = data['category'] ?? 'Meta';
+
+      final historyDoc =
+          await FirebaseFirestore.instance
+              .collection('history')
+              .doc(goalId)
+              .get();
+
+      List<DepositEntry> history = [];
+      if (historyDoc.exists) {
+        final raw = List<Map<String, dynamic>>.from(historyDoc['items']);
+        history =
+            raw
+                .map(
+                  (e) => DepositEntry(
+                    month: e['month'],
+                    amount: e['amount'],
+                    confirmed: e['confirmed'],
+                    timestamp: (e['timestamp'] as Timestamp).toDate(),
+                  ),
+                )
+                .toList();
+      }
+
+      if (history.isEmpty) {
+        history.add(_generateDeposit(monthly, DateTime.now()));
+        await _saveHistory(goalId, history);
+      } else {
+        final last = history.last;
+        final now = DateTime.now();
+        final lastMonth = DateTime(last.timestamp.year, last.timestamp.month);
+        final currentMonth = DateTime(now.year, now.month);
+
+        final isNewMonth = currentMonth.isAfter(lastMonth);
+
+        if (last.confirmed && isNewMonth) {
+          final nextMonthDate = DateTime(
+            last.timestamp.month == 12
+                ? last.timestamp.year + 1
+                : last.timestamp.year,
+            last.timestamp.month == 12 ? 1 : last.timestamp.month + 1,
+          );
+          history.add(_generateDeposit(monthly, nextMonthDate));
+          await _saveHistory(goalId, history);
+        }
+      }
+
+      goalsWithHistory.add(
+        GoalHistoryModel(
+          goalId: goalId,
+          title: title,
+          monthly: monthly,
+          history: history,
         ),
       );
     }
 
-    final List<HistoryItem> historyList = List.generate(months!, (index) {
-      final date = DateTime.now().subtract(Duration(days: 30 * index));
-      final month = _formatMonthYear(date);
-      final status = index == 0
-          ? HistoryStatus.pending
-          : index % 4 == 0
-              ? HistoryStatus.missed
-              : HistoryStatus.done;
-
-      return HistoryItem(month: month, amount: monthlyAmount!, status: status);
+    setState(() {
+      _goals = goalsWithHistory;
+      _loading = false;
     });
+  }
 
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildTopBar(context),
-              const SizedBox(height: 16),
-              _buildInvestmentSummary(),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: historyList.length,
-                  itemBuilder: (context, index) {
-                    final item = historyList[index];
-                    return _buildHistoryRow(item);
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+  DepositEntry _generateDeposit(double monthly, DateTime date) {
+    final formatted = _formatMonthYear(date);
+    return DepositEntry(
+      month: formatted,
+      amount: monthly,
+      confirmed: false,
+      timestamp: date,
     );
   }
 
-  Widget _buildTopBar(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        IconButton(
+  Future<void> _saveHistory(String goalId, List<DepositEntry> history) async {
+    await FirebaseFirestore.instance.collection('history').doc(goalId).set({
+      'items': history.map((e) => e.toMap()).toList(),
+    });
+  }
+
+  Future<void> _confirmDeposit(String goalId, int index) async {
+    final goal = _goals.firstWhere((g) => g.goalId == goalId);
+    final history = goal.history;
+
+    if (!history[index].confirmed) {
+      history[index] = history[index].copyWith(confirmed: true);
+
+      if (index == history.length - 1) {
+        final lastTimestamp = history[index].timestamp;
+        final nextMonthDate = DateTime(
+          lastTimestamp.month == 12
+              ? lastTimestamp.year + 1
+              : lastTimestamp.year,
+          lastTimestamp.month == 12 ? 1 : lastTimestamp.month + 1,
+        );
+        history.add(_generateDeposit(goal.monthly, nextMonthDate));
+      }
+
+      await _saveHistory(goalId, history);
+      setState(() {});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
-        const Text('Histórico',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        IconButton(
-          icon: const Icon(Icons.print, color: Colors.black),
-          onPressed: () => _showPrintDialog(context),
-        ),
+        title: const Text('Histórico de Depósitos'),
+      ),
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _goals.isEmpty
+              ? _buildNoGoalsMessage()
+              : ListView.builder(
+                itemCount: _goals.length,
+                itemBuilder: (context, i) {
+                  final goal = _goals[i];
+                  return ExpansionTile(
+                    title: Text(goal.title),
+                    children:
+                        goal.history.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final item = entry.value;
+                          return ListTile(
+                            title: Text(item.month),
+                            subtitle: Text(
+                              'R\$${item.amount.toStringAsFixed(2)}',
+                            ),
+                            trailing: ElevatedButton(
+                              onPressed:
+                                  item.confirmed
+                                      ? null
+                                      : () =>
+                                          _confirmDeposit(goal.goalId, index),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    item.confirmed ? Colors.green : Colors.grey,
+                                disabledBackgroundColor: Colors.green,
+                              ),
+                              child: const Text('Confirmar'),
+                            ),
+                          );
+                        }).toList(),
+                  );
+                },
+              ),
+    );
+  }
+
+  Widget _buildNoGoalsMessage() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: const [
+        Text('Nenhuma meta encontrada.'),
+        SizedBox(height: 16),
+        Icon(Icons.error_outline, size: 48, color: Colors.grey),
+        SizedBox(height: 32),
+        Text('Volte e crie sua primeira meta para começar!'),
       ],
-    );
-  }
-
-  Widget _buildInvestmentSummary() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.show_chart, color: Colors.purple),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title!,
-              style: const TextStyle(fontSize: 16),
-            ),
-          ),
-          const Icon(Icons.expand_more),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHistoryRow(HistoryItem item) {
-    Color color;
-    switch (item.status) {
-      case HistoryStatus.done:
-        color = Colors.green;
-        break;
-      case HistoryStatus.missed:
-        color = Colors.orange;
-        break;
-      case HistoryStatus.pending:
-        color = Colors.grey;
-        break;
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
-        children: [
-          Expanded(flex: 2, child: Text(item.month)),
-          Expanded(flex: 2, child: Text('R\$${item.amount.toStringAsFixed(2)}')),
-          Expanded(
-            flex: 1,
-            child: ElevatedButton(
-              onPressed: item.status == HistoryStatus.pending ? () {} : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: color,
-                disabledBackgroundColor: color,
-              ),
-              child: const Text('Check'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPrintDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.deepPurple.shade900,
-        contentPadding: const EdgeInsets.all(24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              onTap: () {
-                Navigator.pop(context);
-              },
-              leading: const Icon(Icons.picture_as_pdf, color: Colors.white),
-              title: const Text(
-                'SALVAR COMO PDF',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ),
-            const Divider(color: Colors.white24),
-            ListTile(
-              onTap: () {
-                Navigator.pop(context);
-              },
-              leading: const Icon(Icons.print, color: Colors.white),
-              title: const Text(
-                'IMPRIMIR NA IMPRESSORA LOCAL',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
   String _formatMonthYear(DateTime date) {
     const months = [
-      'JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO',
-      'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'
+      'JANEIRO',
+      'FEVEREIRO',
+      'MARÇO',
+      'ABRIL',
+      'MAIO',
+      'JUNHO',
+      'JULHO',
+      'AGOSTO',
+      'SETEMBRO',
+      'OUTUBRO',
+      'NOVEMBRO',
+      'DEZEMBRO',
     ];
     return '${months[date.month - 1]} ${date.year}';
   }
 }
 
-// Enum para status
-enum HistoryStatus { done, missed, pending }
+// ---------------------- MODELOS ----------------------
 
-// Modelo de item do histórico
-class HistoryItem {
+class GoalHistoryModel {
+  final String goalId;
+  final String title;
+  final double monthly;
+  final List<DepositEntry> history;
+
+  GoalHistoryModel({
+    required this.goalId,
+    required this.title,
+    required this.monthly,
+    required this.history,
+  });
+}
+
+class DepositEntry {
   final String month;
   final double amount;
-  final HistoryStatus status;
+  final bool confirmed;
+  final DateTime timestamp;
 
-  HistoryItem({
+  DepositEntry({
     required this.month,
     required this.amount,
-    required this.status,
+    required this.confirmed,
+    required this.timestamp,
   });
+
+  Map<String, dynamic> toMap() => {
+    'month': month,
+    'amount': amount,
+    'confirmed': confirmed,
+    'timestamp': Timestamp.fromDate(timestamp),
+  };
+
+  DepositEntry copyWith({bool? confirmed}) => DepositEntry(
+    month: month,
+    amount: amount,
+    confirmed: confirmed ?? this.confirmed,
+    timestamp: timestamp,
+  );
 }

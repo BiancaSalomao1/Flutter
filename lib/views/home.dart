@@ -60,14 +60,54 @@ class _HomePageState extends State<HomePage> {
 class HomeContent extends StatelessWidget {
   const HomeContent({super.key});
 
-  Future<double> _fetchTotalMetas() async {
-    final snapshot = await FirebaseFirestore.instance.collection('goals').get();
-    double total = 0;
-    for (var doc in snapshot.docs) {
-      final data = doc.data();
-      total += (data['monthlyContribution'] ?? 0).toDouble();
+  Future<Map<String, double>> _fetchMontanteEJurosComBaseNasMetas() async {
+    print('🔍 Buscando histórico...');
+    final historySnapshot =
+        await FirebaseFirestore.instance.collection('history').get();
+
+    double totalConfirmado = 0;
+    double totalJuros = 0;
+
+    for (var doc in historySnapshot.docs) {
+      final goalId = doc.id;
+      print('Verificando histórico para meta: $goalId');
+
+      final historyItems = List<Map<String, dynamic>>.from(doc['items']);
+      print('Itens encontrados: ${historyItems.length}');
+
+      final confirmedDeposits =
+          historyItems
+              .where((item) => item['confirmed'] == true)
+              .map((item) => (item['amount'] as num).toDouble())
+              .toList();
+
+      final double somaConfirmada = confirmedDeposits.fold(0, (a, b) => a + b);
+      print('💰 Soma confirmada: $somaConfirmada');
+
+      totalConfirmado += somaConfirmada;
+
+      // Buscar a meta correspondente
+      final goalDoc =
+          await FirebaseFirestore.instance
+              .collection('goals')
+              .doc(goalId)
+              .get();
+
+      if (goalDoc.exists) {
+        final goalData = goalDoc.data()!;
+        final taxa = (goalData['rate'] ?? 0).toDouble();
+        final juros = somaConfirmada * (taxa / 100);
+        print(' Juros da meta $goalId com taxa $taxa%: $juros');
+        totalJuros += juros;
+      } else {
+        print('Meta $goalId não encontrada no Firestore.');
+      }
     }
-    return total;
+
+    print(' Total confirmado: $totalConfirmado');
+    print('Total juros: $totalJuros');
+
+    return {'montante': totalConfirmado, 'juros': totalJuros};
   }
 
   @override
@@ -121,20 +161,33 @@ class HomeContent extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            FutureBuilder<double>(
-              future: _fetchTotalMetas(),
+            FutureBuilder<Map<String, double>>(
+              future: _fetchMontanteEJurosComBaseNasMetas(),
               builder: (context, snapshot) {
-                final metas = snapshot.data ?? 0;
-                final juros = metas * 0.2; // Exemplo de estimativa de juros
+                final dados = snapshot.data ?? {'montante': 0, 'juros': 0};
+                final montante = dados['montante']!;
+                final juros = dados['juros']!;
+
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildCard('Metas Mensal', 'R\$${metas.toStringAsFixed(2)}', Colors.black),
-                    _buildCard('Juros Compostos', 'R\$${juros.toStringAsFixed(2)}', Colors.pinkAccent),
+                    _buildCard(
+                      'Metas Mensal',
+                      'R\$${montante.toStringAsFixed(2)}',
+                      Colors.black,
+                      () {},
+                    ),
+                    _buildCard(
+                      'Juros Compostos',
+                      'R\$${juros.toStringAsFixed(2)}',
+                      Colors.pinkAccent,
+                      () {},
+                    ),
                   ],
                 );
               },
             ),
+
             const SizedBox(height: 20),
             const Text(
               'Menu',
@@ -145,33 +198,55 @@ class HomeContent extends StatelessWidget {
               child: ListView(
                 children: [
                   _buildMenuItem(Icons.shield, 'Metas', () => navigateTo(1)),
-                  _buildMenuItem(Icons.bar_chart, 'Estatísticas', () => navigateTo(2)),
-                  _buildMenuItem(Icons.school, 'Conteúdo Educacional', () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const EducationalContentPage()),
-                      )),
-                  _buildMenuItem(Icons.note_alt, 'Sugestões', () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChangeNotifierProvider(
-                            create: (_) => QuoteController(),
-                            child: InvestmentSuggestionsPage(),
-                          ),
-                        ),
-                      )),
-                  _buildMenuItem(Icons.list, 'Histórico', () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const HistoricalPage(),
-                        ),
-                      )),
-                  _buildMenuItem(Icons.nordic_walking, 'Sobre Nós', () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AboutPage(),
-                        ),
-                      )),
+                  _buildMenuItem(
+                    Icons.bar_chart,
+                    'Estatísticas',
+                    () => navigateTo(2),
+                  ),
+                  _buildMenuItem(
+                    Icons.school,
+                    'Conteúdo Educacional',
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EducationalContentPage(),
+                      ),
+                    ),
+                  ),
+                  _buildMenuItem(
+                    Icons.note_alt,
+                    'Sugestões',
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (_) => ChangeNotifierProvider(
+                              create: (_) => QuoteController(),
+                              child: InvestmentSuggestionsPage(),
+                            ),
+                      ),
+                    ),
+                  ),
+                  _buildMenuItem(
+                    Icons.list,
+                    'Histórico',
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HistoricalPage(),
+                      ),
+                    ),
+                  ),
+                  _buildMenuItem(
+                    Icons.nordic_walking,
+                    'Sobre Nós',
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AboutPage(),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -181,35 +256,43 @@ class HomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildCard(String title, String amount, Color color) {
-    return Container(
-      width: 150,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+  Widget _buildCard(
+    String title,
+    String amount,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 150,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            amount,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+            const SizedBox(height: 10),
+            Text(
+              amount,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
