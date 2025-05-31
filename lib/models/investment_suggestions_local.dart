@@ -10,15 +10,7 @@ final List<InvestmentSuggestion> localSuggestions = [
     fee: '0%',
     symbol: 'NU',
   ),
-  InvestmentSuggestion(
-    title: 'CDB 100% CDI',
-    min: 1000.00,
-    rate: 1.0,
-    months: 12,
-    tax: '15%',
-    fee: '0%',
-    symbol: 'CDB',
-  ),
+ 
   InvestmentSuggestion(
     title: 'Mercado Pago Ações',
     min: 50.00,

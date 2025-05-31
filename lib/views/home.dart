@@ -143,7 +143,7 @@ Future<Map<String, double>> _calcularJurosDasMetas() async {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
-                  'Oi, Fulana!',
+                  'Olá!',
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -151,7 +151,7 @@ Future<Map<String, double>> _calcularJurosDasMetas() async {
                   ),
                 ),
                 Text(
-                  'Bom Dia. Bom ver você aqui.',
+                  'Bom ver você aqui.',
                   style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
               ],
