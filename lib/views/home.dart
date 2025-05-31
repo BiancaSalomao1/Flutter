@@ -1,3 +1,6 @@
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:appeducafin/controllers/bottom_navegation.dart';
 import 'package:appeducafin/views/about.dart';
 import 'package:appeducafin/views/alert.dart';
@@ -7,9 +10,7 @@ import 'package:appeducafin/views/goals.dart';
 import 'package:appeducafin/views/historical.dart';
 import 'package:appeducafin/views/sugestions.dart';
 import 'package:appeducafin/views/statistic.dart';
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../controllers/quote_controller.dart';
 
 class HomePage extends StatefulWidget {
@@ -59,56 +60,69 @@ class _HomePageState extends State<HomePage> {
 
 class HomeContent extends StatelessWidget {
   const HomeContent({super.key});
+Future<Map<String, double>> _calcularJurosDasMetas() async {
+  final historySnapshot =
+      await FirebaseFirestore.instance.collection('history').get();
 
-  Future<Map<String, double>> _fetchMontanteEJurosComBaseNasMetas() async {
-    print('🔍 Buscando histórico...');
-    final historySnapshot =
-        await FirebaseFirestore.instance.collection('history').get();
+  double totalConfirmado = 0;
+  double totalJuros = 0;
 
-    double totalConfirmado = 0;
-    double totalJuros = 0;
+  for (var doc in historySnapshot.docs) {
+    final goalId = doc.id;
+    print('Verificando histórico para meta: $goalId');
 
-    for (var doc in historySnapshot.docs) {
-      final goalId = doc.id;
-      print('Verificando histórico para meta: $goalId');
+    final historyItems = List<Map<String, dynamic>>.from(doc['items']);
+    final confirmedDeposits = historyItems
+        .where((item) => item['confirmed'] == true)
+        .map((item) => (item['amount'] as num).toDouble())
+        .toList();
 
-      final historyItems = List<Map<String, dynamic>>.from(doc['items']);
-      print('Itens encontrados: ${historyItems.length}');
+    final double somaConfirmada = confirmedDeposits.fold(0, (a, b) => a + b);
+    totalConfirmado += somaConfirmada;
 
-      final confirmedDeposits =
-          historyItems
-              .where((item) => item['confirmed'] == true)
-              .map((item) => (item['amount'] as num).toDouble())
-              .toList();
+    final goalDoc = await FirebaseFirestore.instance
+        .collection('goals')
+        .doc(goalId)
+        .get();
 
-      final double somaConfirmada = confirmedDeposits.fold(0, (a, b) => a + b);
-      print('💰 Soma confirmada: $somaConfirmada');
+    if (goalDoc.exists) {
+      final goalData = goalDoc.data()!;
+      final taxa = (goalData['rate'] ?? 0).toDouble();
+      final juros = somaConfirmada * (taxa / 100);
+      print('Juros da meta $goalId com taxa $taxa%: $juros');
+      totalJuros += juros;
+    } else {
+      print('Meta $goalId não encontrada no Firestore.');
+    }
+  }
 
-      totalConfirmado += somaConfirmada;
+  return {'montante': totalConfirmado, 'juros': totalJuros};
+}
 
-      // Buscar a meta correspondente
-      final goalDoc =
-          await FirebaseFirestore.instance
-              .collection('goals')
-              .doc(goalId)
-              .get();
+ Future<double> calcularMontanteConfirmado() async {
+  final historySnapshot =
+      await FirebaseFirestore.instance.collection('history').get();
 
-      if (goalDoc.exists) {
-        final goalData = goalDoc.data()!;
-        final taxa = (goalData['rate'] ?? 0).toDouble();
-        final juros = somaConfirmada * (taxa / 100);
-        print(' Juros da meta $goalId com taxa $taxa%: $juros');
-        totalJuros += juros;
-      } else {
-        print('Meta $goalId não encontrada no Firestore.');
+  double totalConfirmado = 0;
+
+  for (var doc in historySnapshot.docs) {
+    final items = List<Map<String, dynamic>>.from(doc['items']);
+    print('Itens encontrados: ${items.length}');
+
+    for (var item in items) {
+      final amount = (item['amount'] ?? 0).toDouble();
+      final bool confirmado = item['confirmed'] == true;
+
+      if (confirmado && amount > 0) {
+        totalConfirmado += amount;
       }
     }
-
-    print(' Total confirmado: $totalConfirmado');
-    print('Total juros: $totalJuros');
-
-    return {'montante': totalConfirmado, 'juros': totalJuros};
   }
+
+  print('Total confirmado (montante): R\$${totalConfirmado.toStringAsFixed(2)}');
+  return totalConfirmado;
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -143,13 +157,12 @@ class HomeContent extends StatelessWidget {
               ],
             ),
             GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AlertPage()),
-                );
-              },
-              child: CircleAvatar(
+              onTap:
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AlertPage()),
+                  ),
+              child: const CircleAvatar(
                 backgroundImage: AssetImage('assets/bell.png'),
               ),
             ),
@@ -162,32 +175,27 @@ class HomeContent extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             FutureBuilder<Map<String, double>>(
-              future: _fetchMontanteEJurosComBaseNasMetas(),
+              future: _calcularJurosDasMetas(),
               builder: (context, snapshot) {
-                final dados = snapshot.data ?? {'montante': 0, 'juros': 0};
-                final montante = dados['montante']!;
-                final juros = dados['juros']!;
-
+                final montante = snapshot.data?['montante'] ?? 0;
+                final juros = snapshot.data?['juros'] ?? 0;
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildCard(
-                      'Metas Mensal',
+                      'Depósitos Confirmados',
                       'R\$${montante.toStringAsFixed(2)}',
                       Colors.black,
-                      () {},
                     ),
                     _buildCard(
                       'Juros Compostos',
                       'R\$${juros.toStringAsFixed(2)}',
                       Colors.pinkAccent,
-                      () {},
                     ),
                   ],
                 );
               },
             ),
-
             const SizedBox(height: 20),
             const Text(
               'Menu',
@@ -209,7 +217,7 @@ class HomeContent extends StatelessWidget {
                     () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const EducationalContentPage(),
+                        builder: (_) => const EducationalContentPage(),
                       ),
                     ),
                   ),
@@ -232,9 +240,7 @@ class HomeContent extends StatelessWidget {
                     'Histórico',
                     () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const HistoricalPage(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const HistoricalPage()),
                     ),
                   ),
                   _buildMenuItem(
@@ -242,9 +248,7 @@ class HomeContent extends StatelessWidget {
                     'Sobre Nós',
                     () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => const AboutPage(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const AboutPage()),
                     ),
                   ),
                 ],
@@ -256,55 +260,53 @@ class HomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildCard(
-    String title,
-    String amount,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 150,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
+  Widget _buildCard(String title, String amount, Color color) {
+    return Container(
+      width: 150,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
             ),
-            const SizedBox(height: 10),
-            Text(
-              amount,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            amount,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildMenuItem(IconData icon, String title, VoidCallback onTap) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
-      leading: Icon(icon, color: Colors.pinkAccent),
-      title: Text(title),
-      tileColor: Colors.pink.shade50,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onTap: onTap,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 8.0,
+          horizontal: 16,
+        ),
+        leading: Icon(icon, color: Colors.pinkAccent),
+        title: Text(title),
+        tileColor: Colors.pink.shade50,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        onTap: onTap,
+      ),
     );
   }
 }
