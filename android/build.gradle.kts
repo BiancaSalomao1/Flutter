@@ -1,9 +1,13 @@
 // build.gradle.kts (nível do projeto)
 
 buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
     dependencies {
-        // ✅ Adiciona o plugin do Firebase (Google Services)
         classpath("com.google.gms:google-services:4.3.15")
+        classpath("com.android.tools.build:gradle:8.1.0")
     }
 }
 
