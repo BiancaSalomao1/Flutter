@@ -10,6 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
   provider: ^6.1.1
+  collection: ^1.18.0
 
   # Gráficos
   fl_chart: ^1.0.0

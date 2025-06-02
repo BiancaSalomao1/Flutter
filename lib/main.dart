@@ -17,7 +17,7 @@ void main() async{
   runApp(
     
     DevicePreview(
-      enabled: true, // Habilita o DevicePreview
+      enabled: false, // Habilita o DevicePreview
       builder: (context) => MyApp(),
     ),
   );
@@ -34,4 +34,12 @@ class MyApp extends StatelessWidget {
     );
   }
    
+  // @override
+  // Widget build(BuildContext context) {
+  //   return MaterialApp(
+  //   debugShowCheckedModeBanner: false,
+  //     home:HomePage(),
+  //   );
+  // }
+
 }

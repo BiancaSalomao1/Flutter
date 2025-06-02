@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:appeducafin/views/statistic.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:appeducafin/controllers/bottom_navegation.dart';
@@ -9,9 +10,9 @@ import 'package:appeducafin/views/educational.dart';
 import 'package:appeducafin/views/goals.dart';
 import 'package:appeducafin/views/historical.dart';
 import 'package:appeducafin/views/sugestions.dart';
-import 'package:appeducafin/views/statistic.dart';
 import 'package:provider/provider.dart';
 import '../controllers/quote_controller.dart';
+import 'package:appeducafin/views/search.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -60,69 +61,45 @@ class _HomePageState extends State<HomePage> {
 
 class HomeContent extends StatelessWidget {
   const HomeContent({super.key});
-Future<Map<String, double>> _calcularJurosDasMetas() async {
-  final historySnapshot =
-      await FirebaseFirestore.instance.collection('history').get();
 
-  double totalConfirmado = 0;
-  double totalJuros = 0;
+  Future<Map<String, double>> _calcularJurosDasMetas() async {
+    final historySnapshot = await FirebaseFirestore.instance.collection('history').get();
 
-  for (var doc in historySnapshot.docs) {
-    final goalId = doc.id;
-    print('Verificando histórico para meta: $goalId');
+    double totalConfirmado = 0;
+    double totalJuros = 0;
 
-    final historyItems = List<Map<String, dynamic>>.from(doc['items']);
-    final confirmedDeposits = historyItems
-        .where((item) => item['confirmed'] == true)
-        .map((item) => (item['amount'] as num).toDouble())
-        .toList();
+    for (var doc in historySnapshot.docs) {
+      final goalId = doc.id;
+      print('Verificando histórico para meta: $goalId');
 
-    final double somaConfirmada = confirmedDeposits.fold(0, (a, b) => a + b);
-    totalConfirmado += somaConfirmada;
+      final goalDoc = await FirebaseFirestore.instance
+          .collection('goals')
+          .doc(goalId)
+          .get();
 
-    final goalDoc = await FirebaseFirestore.instance
-        .collection('goals')
-        .doc(goalId)
-        .get();
+      if (!goalDoc.exists || (goalDoc.data()?['deleted'] == true)) {
+        print('Meta $goalId não encontrada ou marcada como deletada - ignorando.');
+        continue;
+      }
 
-    if (goalDoc.exists) {
+      final historyItems = List<Map<String, dynamic>>.from(doc['items']);
+      final confirmedDeposits = historyItems
+          .where((item) => item['confirmed'] == true)
+          .map((item) => (item['amount'] as num).toDouble())
+          .toList();
+
+      final double somaConfirmada = confirmedDeposits.fold(0, (a, b) => a + b);
+      totalConfirmado += somaConfirmada;
+
       final goalData = goalDoc.data()!;
       final taxa = (goalData['rate'] ?? 0).toDouble();
       final juros = somaConfirmada * (taxa / 100);
       print('Juros da meta $goalId com taxa $taxa%: $juros');
       totalJuros += juros;
-    } else {
-      print('Meta $goalId não encontrada no Firestore.');
     }
+
+    return {'montante': totalConfirmado, 'juros': totalJuros};
   }
-
-  return {'montante': totalConfirmado, 'juros': totalJuros};
-}
-
- Future<double> calcularMontanteConfirmado() async {
-  final historySnapshot =
-      await FirebaseFirestore.instance.collection('history').get();
-
-  double totalConfirmado = 0;
-
-  for (var doc in historySnapshot.docs) {
-    final items = List<Map<String, dynamic>>.from(doc['items']);
-    print('Itens encontrados: ${items.length}');
-
-    for (var item in items) {
-      final amount = (item['amount'] ?? 0).toDouble();
-      final bool confirmado = item['confirmed'] == true;
-
-      if (confirmado && amount > 0) {
-        totalConfirmado += amount;
-      }
-    }
-  }
-
-  print('Total confirmado (montante): R\$${totalConfirmado.toStringAsFixed(2)}');
-  return totalConfirmado;
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -157,11 +134,10 @@ Future<Map<String, double>> _calcularJurosDasMetas() async {
               ],
             ),
             GestureDetector(
-              onTap:
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AlertPage()),
-                  ),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AlertPage()),
+              ),
               child: const CircleAvatar(
                 backgroundImage: AssetImage('assets/bell.png'),
               ),
@@ -206,19 +182,13 @@ Future<Map<String, double>> _calcularJurosDasMetas() async {
               child: ListView(
                 children: [
                   _buildMenuItem(Icons.shield, 'Metas', () => navigateTo(1)),
-                  _buildMenuItem(
-                    Icons.bar_chart,
-                    'Estatísticas',
-                    () => navigateTo(2),
-                  ),
+                  _buildMenuItem(Icons.bar_chart, 'Estatísticas', () => navigateTo(2)),
                   _buildMenuItem(
                     Icons.school,
                     'Conteúdo Educacional',
                     () => Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const EducationalContentPage(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const EducationalContentPage()),
                     ),
                   ),
                   _buildMenuItem(
@@ -227,11 +197,10 @@ Future<Map<String, double>> _calcularJurosDasMetas() async {
                     () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder:
-                            (_) => ChangeNotifierProvider(
-                              create: (_) => QuoteController(),
-                              child: InvestmentSuggestionsPage(),
-                            ),
+                        builder: (_) => ChangeNotifierProvider(
+                          create: (_) => QuoteController(),
+                          child: InvestmentSuggestionsPage(),
+                        ),
                       ),
                     ),
                   ),
@@ -241,6 +210,14 @@ Future<Map<String, double>> _calcularJurosDasMetas() async {
                     () => Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const HistoricalPage()),
+                    ),
+                  ),
+                  _buildMenuItem(
+                    Icons.search,
+                    'Pesquisa',
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const PesquisaPage()),
                     ),
                   ),
                   _buildMenuItem(
@@ -297,10 +274,7 @@ Future<Map<String, double>> _calcularJurosDasMetas() async {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: 8.0,
-          horizontal: 16,
-        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
         leading: Icon(icon, color: Colors.pinkAccent),
         title: Text(title),
         tileColor: Colors.pink.shade50,

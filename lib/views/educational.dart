@@ -1,4 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:appeducafin/views/education/importance_of_goals.dart';
+import 'package:appeducafin/views/education/passive_income.dart';
+import 'package:appeducafin/views/education/types_of_investments.dart';
+import 'package:appeducafin/views/education/control_expenses.dart';
+import 'package:appeducafin/views/education/treasury.dart';
+import 'package:appeducafin/views/education/cdbs.dart';
+import 'package:appeducafin/views/education/investment_funds.dart';
 
 class EducationalContentPage extends StatelessWidget {
   const EducationalContentPage({super.key});
@@ -25,10 +32,10 @@ class EducationalContentPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            _buildCard(Icons.shield, 'Importância de Metas'),
-            _buildCard(Icons.flash_on, 'O que é renda passiva'),
-            _buildCard(Icons.school, 'Tipos de Investimentos'),
-            _buildCard(Icons.edit, 'Como Controlar suas Despesas'),
+            _buildCard(context, Icons.shield, 'Importância de Metas', const ImportanceOfGoalsPage()),
+            _buildCard(context, Icons.flash_on, 'O que é renda passiva', const PassiveIncomePage()),
+            _buildCard(context, Icons.school, 'Tipos de Investimentos', const TypesOfInvestmentsPage()),
+            _buildCard(context, Icons.edit, 'Como Controlar suas Despesas', const ControlExpensesPage()),
 
             const SizedBox(height: 32),
             const Text(
@@ -37,40 +44,43 @@ class EducationalContentPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            _buildCard(Icons.shield, 'Tesouro Direto'),
-            _buildCard(Icons.flash_on, 'CDBs'),
-            _buildCard(Icons.school, 'Fundos'),
+            _buildCard(context, Icons.shield, 'Tesouro Direto', const TreasuryPage()),
+            _buildCard(context, Icons.flash_on, 'CDBs', const CDBsPage()),
+            _buildCard(context, Icons.school, 'Fundos', const InvestmentFundsPage()),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCard(IconData icon, String title) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.pink.shade50,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: Colors.pink.shade100,
-            child: Icon(icon, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+  Widget _buildCard(BuildContext context, IconData icon, String title, Widget page) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.pink.shade50,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: Colors.pink.shade100,
+              child: Icon(icon, color: Colors.white),
             ),
-          )
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            )
+          ],
+        ),
       ),
     );
   }
