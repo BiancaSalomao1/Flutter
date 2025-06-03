@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:appeducafin/views/home.dart';
 
 class CriarUsuarioScreen extends StatefulWidget {
   @override
@@ -15,11 +16,10 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
   final TextEditingController primeiroNomeController = TextEditingController();
   final TextEditingController sobrenomeController = TextEditingController();
   final TextEditingController senhaController = TextEditingController();
-  final TextEditingController confirmarSenhaController =
-      TextEditingController();
+  final TextEditingController confirmarSenhaController = TextEditingController();
   final TextEditingController telefoneController = TextEditingController();
-  final TextEditingController dataNascimentoController =
-      TextEditingController();
+  final TextEditingController dataNascimentoController = TextEditingController();
+
   @override
   void dispose() {
     emailController.dispose();
@@ -30,6 +30,17 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
     telefoneController.dispose();
     dataNascimentoController.dispose();
     super.dispose();
+  }
+
+  Future<int> _gerarProximoIdSequencial() async {
+    final counterRef = FirebaseFirestore.instance.collection('counters').doc('users');
+
+    return FirebaseFirestore.instance.runTransaction((transaction) async {
+      final snapshot = await transaction.get(counterRef);
+      int current = snapshot.exists ? snapshot.data()!['value'] ?? 0 : 0;
+      transaction.set(counterRef, {'value': current + 1});
+      return current + 1;
+    });
   }
 
   void _salvarCadastro() async {
@@ -44,15 +55,15 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
       try {
         UserCredential userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(
-              email: emailController.text.trim(),
-              password: senhaController.text.trim(),
-            );
+          email: emailController.text.trim(),
+          password: senhaController.text.trim(),
+        );
 
-        // Recupera o UID
         String uid = userCredential.user!.uid;
+        int idSequencial = await _gerarProximoIdSequencial();
 
-        // Salva os dados adicionais no Firestore
         await FirebaseFirestore.instance.collection('usuarios').doc(uid).set({
+          'id': idSequencial,
           'primeiro_nome': primeiroNomeController.text.trim(),
           'sobrenome': sobrenomeController.text.trim(),
           'email': emailController.text.trim(),
@@ -80,33 +91,30 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
 
         showDialog(
           context: context,
-          builder:
-              (_) => AlertDialog(
-                title: const Text('Erro'),
-                content: Text(erro),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('OK'),
-                  ),
-                ],
+          builder: (_) => AlertDialog(
+            title: const Text('Erro'),
+            content: Text(erro),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
               ),
+            ],
+          ),
         );
       } catch (e) {
-        // Erros não Firebase
         showDialog(
           context: context,
-          builder:
-              (_) => AlertDialog(
-                title: const Text('Erro inesperado'),
-                content: Text(e.toString()),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('OK'),
-                  ),
-                ],
+          builder: (_) => AlertDialog(
+            title: const Text('Erro inesperado'),
+            content: Text(e.toString()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
               ),
+            ],
+          ),
         );
       }
     }
@@ -136,9 +144,7 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Informe o email';
-                  if (!RegExp(
-                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                  ).hasMatch(value)) {
+                  if (!RegExp(r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$').hasMatch(value)) {
                     return 'Email inválido';
                   }
                   return null;
@@ -151,11 +157,8 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
                   labelText: 'Primeiro Nome',
                   border: OutlineInputBorder(),
                 ),
-                validator:
-                    (value) =>
-                        (value == null || value.isEmpty)
-                            ? 'Informe o primeiro nome'
-                            : null,
+                validator: (value) =>
+                    (value == null || value.isEmpty) ? 'Informe o primeiro nome' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -164,11 +167,8 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
                   labelText: 'Sobrenome',
                   border: OutlineInputBorder(),
                 ),
-                validator:
-                    (value) =>
-                        (value == null || value.isEmpty)
-                            ? 'Informe o sobrenome'
-                            : null,
+                validator: (value) =>
+                    (value == null || value.isEmpty) ? 'Informe o sobrenome' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -179,8 +179,7 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty)
-                    return 'Informe o telefone';
+                  if (value == null || value.isEmpty) return 'Informe o telefone';
                   if (value.length < 10) return 'Telefone incompleto';
                   return null;
                 },
@@ -194,16 +193,12 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value == null || value.isEmpty)
-                    return 'Informe a data de nascimento';
-                  // Validação simples para o formato DD/MM/AAAA
+                  if (value == null || value.isEmpty) return 'Informe a data de nascimento';
                   final datePattern = RegExp(r'^\d{2}/\d{2}/\d{4}$');
-                  if (!datePattern.hasMatch(value))
-                    return 'Data inválida. Use DD/MM/AAAA';
+                  if (!datePattern.hasMatch(value)) return 'Data inválida. Use DD/MM/AAAA';
                   return null;
                 },
               ),
-
               const SizedBox(height: 12),
               TextFormField(
                 controller: senhaController,
@@ -212,11 +207,8 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
                   labelText: 'Senha',
                   border: OutlineInputBorder(),
                 ),
-                validator:
-                    (value) =>
-                        (value == null || value.length < 6)
-                            ? 'Senha muito curta'
-                            : null,
+                validator: (value) =>
+                    (value == null || value.length < 6) ? 'Senha muito curta' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -227,8 +219,7 @@ class _CriarUsuarioScreenState extends State<CriarUsuarioScreen> {
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
-                  if (value != senhaController.text)
-                    return 'As senhas não coincidem';
+                  if (value != senhaController.text) return 'As senhas não coincidem';
                   return null;
                 },
               ),

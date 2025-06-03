@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:collection/collection.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../models/alert.dart';
 
 class AlertPage extends StatefulWidget {
   const AlertPage({super.key});
@@ -20,85 +22,140 @@ class _AlertPageState extends State<AlertPage> {
   }
 
   Future<void> _loadGoalAlerts() async {
-    final goalsSnapshot =
-        await FirebaseFirestore.instance.collection('goals').get();
-    final historySnapshot =
-        await FirebaseFirestore.instance.collection('history').get();
-
-    final now = DateTime.now();
-    List<GoalAlert> alerts = [];
-
-    for (var doc in goalsSnapshot.docs) {
-      final goalId = doc.id;
-      final data = doc.data();
-      final String title = data['category'] ?? 'Meta';
-      final double monthly = (data['monthly'] ?? 0).toDouble();
-      final int totalMonths = (data['months'] ?? 0).toInt();
-      final double rate = (data['rate'] ?? 1.0).toDouble();
-      final double finalAmount = (data['finalAmount'] ?? 0).toDouble();
-
-      final historyDoc = historySnapshot.docs.firstWhereOrNull(
-        (h) => h.id == goalId,
-      );
-
-      if (historyDoc == null ||
-          historyDoc.data() == null ||
-          !historyDoc.data().containsKey('items')) {
-        continue;
+    try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      print('DEBUG: UserId = $userId');
+      
+      if (userId == null) {
+        print('DEBUG: User not authenticated');
+        setState(() {
+          _loading = false;
+        });
+        return;
       }
 
-      final List<dynamic> itemsRaw = historyDoc['items'] ?? [];
-      final confirmed = itemsRaw.where((e) => e['confirmed'] == true).toList();
-      final pending = itemsRaw.where((e) => e['confirmed'] != true).toList();
+      print('DEBUG: Fetching goals...');
+      final goalsSnapshot =
+          await FirebaseFirestore.instance
+              .collection('goals')
+              .where('userId', isEqualTo: userId)
+              .where('deleted', isEqualTo: false)
+              .get();
 
-      final confirmedMonths = confirmed.length;
-      final pendingMonths = pending.length;
-      final totalInvested = confirmed.fold<double>(
-        0.0,
-        (sum, e) => sum + ((e['amount'] ?? 0) as num).toDouble(),
-      );
+      print('DEBUG: Found ${goalsSnapshot.docs.length} goals');
 
-      final estimatedInterest = finalAmount - (monthly * totalMonths);
-      final passiveIncome = (totalInvested * rate) - totalInvested;
+      print('DEBUG: Fetching history...');
+      final historySnapshot =
+          await FirebaseFirestore.instance
+              .collection('history')
+              .get();
 
-      final lastDepositDate =
-          confirmed.isNotEmpty
-              ? (confirmed.last['timestamp'] as Timestamp?)?.toDate()
-              : null;
+      print('DEBUG: Found ${historySnapshot.docs.length} history documents');
 
-      final Duration sinceLast =
-          lastDepositDate != null
-              ? now.difference(lastDepositDate)
-              : Duration.zero;
+      final now = DateTime.now();
+      List<GoalAlert> alerts = [];
 
-      final String tempoRestante =
-          '${(totalMonths - confirmedMonths) ~/ 12} anos e ${(totalMonths - confirmedMonths) % 12} meses';
+      for (var doc in goalsSnapshot.docs) {
+        final goalId = doc.id;
+        final data = doc.data();
+        
+        print('DEBUG: Processing goal $goalId with data: $data');
 
-      alerts.add(
-        GoalAlert(
-          title: title,
-          monthDeposit: monthly,
-          appliedMonths: totalMonths,
-          depositedMonths: confirmedMonths,
-          pendingMonths: pendingMonths,
-          estimatedAmount: finalAmount,
-          passiveIncome: passiveIncome,
-          remainingTime: tempoRestante,
-          totalInvestment: totalInvested,
-          totalInterest: estimatedInterest,
-        ),
-      );
+        final String title = data['category'] ?? data['title'] ?? data['name'] ?? 'Meta';
+        final double monthly = (data['monthly'] ?? data['monthlyAmount'] ?? 0).toDouble();
+        final int totalMonths = (data['months'] ?? data['totalMonths'] ?? 0).toInt();
+        final double rate = (data['rate'] ?? data['interestRate'] ?? 1.0).toDouble();
+        final double finalAmount = (data['finalAmount'] ?? data['targetAmount'] ?? 0).toDouble();
 
-      // Aqui você pode disparar o alerta para a Home se sinceLast > 30 dias
+        // Pular metas dummy/placeholder
+        if (data['isDummy'] == true || monthly == 0 || totalMonths == 0) {
+          print('DEBUG: Skipping dummy/placeholder goal: $goalId');
+          continue;
+        }
+
+        print('DEBUG: Goal parsed - title: $title, monthly: $monthly, months: $totalMonths');
+
+        final historyDoc = historySnapshot.docs.firstWhereOrNull(
+          (h) => h.id == goalId,
+        );
+
+        print('DEBUG: History doc for $goalId: ${historyDoc != null ? "found" : "not found"}');
+
+        // FIX: Extract items from history document
+        final List<dynamic> itemsRaw = historyDoc?.data()?['items'] ?? [];
+        final List<Map<String, dynamic>> items = itemsRaw.cast<Map<String, dynamic>>();
+
+        print('DEBUG: Processing ${items.length} items');
+
+        final confirmed = items.where((e) => e['confirmed'] == true).toList();
+        final pending = items.where((e) => e['confirmed'] != true).toList();
+
+        final confirmedMonths = confirmed.length;
+        final pendingMonths = pending.length;
+        final totalInvested = confirmed.fold<double>(
+          0.0,
+          (sum, e) => sum + ((e['amount'] ?? 0) as num).toDouble(),
+        );
+
+        print('DEBUG: Confirmed months: $confirmedMonths, Pending months: $pendingMonths, Total invested: $totalInvested');
+
+        final estimatedInterest = finalAmount - (monthly * totalMonths);
+        final passiveIncome = (totalInvested * (rate / 100));
+
+        final lastDepositDate =
+            confirmed.isNotEmpty
+                ? (confirmed.last['timestamp'] as Timestamp?)?.toDate()
+                : null;
+
+        final Duration sinceLast =
+            lastDepositDate != null
+                ? now.difference(lastDepositDate)
+                : Duration.zero;
+                
+        if (sinceLast.inDays >= 30) {
+          await _salvarAtraso(goalId, title, lastDepositDate ?? now);
+        }
+
+        final String tempoRestante =
+            '${(totalMonths - confirmedMonths) ~/ 12} anos e ${(totalMonths - confirmedMonths) % 12} meses';
+
+        print('DEBUG: Creating alert for $title');
+        
+        alerts.add(
+          GoalAlert(
+            goalId: goalId,
+            title: title,
+            monthDeposit: monthly,
+            appliedMonths: totalMonths,
+            depositedMonths: confirmedMonths,
+            pendingMonths: pendingMonths,
+            estimatedAmount: finalAmount,
+            passiveIncome: passiveIncome,
+            remainingTime: tempoRestante,
+            totalInvestment: totalInvested,
+            totalInterest: estimatedInterest,
+          ),
+        );
+      }
+
+      print('DEBUG: Created ${alerts.length} alerts');
+
+      setState(() {
+        _goalAlerts = alerts;
+        _loading = false;
+      });
+    } catch (e) {
+      print('DEBUG: Error loading goal alerts: $e');
+      setState(() {
+        _loading = false;
+      });
     }
-
-    setState(() {
-      _goalAlerts = alerts;
-      _loading = false;
-    });
   }
 
-  void _checkDeposit(GoalAlert goal) {
+  void _checkDeposit(GoalAlert goal) async {
+    // Confirma o aporte no Firestore
+    await _confirmarAporte(goal.goalId);
+    
     showDialog(
       context: context,
       builder:
@@ -117,13 +174,55 @@ class _AlertPageState extends State<AlertPage> {
     );
   }
 
-  void _extraDeposit(GoalAlert goal) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Depósito extra realizado em "${goal.title}".'),
-        backgroundColor: Colors.orange,
+  void _extraDeposit(GoalAlert goal) async {
+    // Solicita o valor do depósito extra
+    final TextEditingController controller = TextEditingController();
+    
+    final result = await showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Depósito Extra'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Adicionar depósito extra para "${goal.title}"'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Valor (R\$)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () {
+              final value = double.tryParse(controller.text);
+              Navigator.pop(context, value);
+            },
+            child: const Text('Adicionar'),
+          ),
+        ],
       ),
     );
+
+    if (result != null && result > 0) {
+      await _adicionarDepositoExtra(goal.goalId, result);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Depósito extra de R\$${result.toStringAsFixed(2)} realizado em "${goal.title}".'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
   }
 
   void _editGoal(GoalAlert goal) {
@@ -143,6 +242,64 @@ class _AlertPageState extends State<AlertPage> {
     );
   }
 
+Future<void> _confirmarAporte(String goalId) async {
+  final docRef = FirebaseFirestore.instance.collection('history').doc(goalId);
+  final doc = await docRef.get();
+
+  if (!doc.exists) return;
+
+  final List<dynamic> items = doc['items'] ?? [];
+  final List<Map<String, dynamic>> lista = List<Map<String, dynamic>>.from(items);
+
+  // encontra o primeiro aporte não confirmado
+  final index = lista.indexWhere((e) => e['confirmed'] != true);
+  if (index == -1) return;
+
+  lista[index]['confirmed'] = true;
+
+  await docRef.update({'items': lista});
+  _loadGoalAlerts(); // recarrega a lista
+}
+
+Future<void> _adicionarDepositoExtra(String goalId, double amount) async {
+  final docRef = FirebaseFirestore.instance.collection('history').doc(goalId);
+  final doc = await docRef.get();
+
+  final now = DateTime.now();
+  final retroDate = DateTime(now.year, now.month - 1, 1);
+
+  final novoAporte = {
+    'amount': amount,
+    'confirmed': false,
+    'timestamp': Timestamp.fromDate(retroDate),
+    'month': '${retroDate.month.toString().padLeft(2, '0')}/${retroDate.year}',
+  };
+
+  if (doc.exists) {
+    final List<dynamic> items = doc['items'] ?? [];
+    final lista = List<Map<String, dynamic>>.from(items);
+    lista.insert(0, novoAporte);
+    await docRef.update({'items': lista});
+  } else {
+    await docRef.set({'items': [novoAporte]});
+  }
+
+  _loadGoalAlerts();
+}
+
+Future<void> _salvarAtraso(String goalId, String meta, DateTime ultimaData) async {
+  final userId = FirebaseAuth.instance.currentUser?.uid;
+  if (userId == null) return;
+
+  await FirebaseFirestore.instance.collection('alerts').doc(goalId).set({
+    'userId': userId,
+    'goalId': goalId,
+    'meta': meta,
+    'lastDeposit': ultimaData,
+    'alertedAt': FieldValue.serverTimestamp(),
+  });
+}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -152,22 +309,58 @@ class _AlertPageState extends State<AlertPage> {
           child:
               _loading
                   ? const Center(child: CircularProgressIndicator())
-                  : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHeader(),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: ListView.builder(
-                          itemCount: _goalAlerts.length,
-                          itemBuilder: (context, index) {
-                            final goal = _goalAlerts[index];
-                            return _buildGoalCard(goal);
-                          },
+                  : _goalAlerts.isEmpty
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeader(),
+                            const SizedBox(height: 32),
+                            const Center(
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    size: 64,
+                                    color: Colors.grey,
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'Nenhuma meta encontrada',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'Crie suas metas de investimento\npara acompanhar os alertas aqui.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHeader(),
+                            const SizedBox(height: 16),
+                            Expanded(
+                              child: ListView.builder(
+                                itemCount: _goalAlerts.length,
+                                itemBuilder: (context, index) {
+                                  final goal = _goalAlerts[index];
+                                  return _buildGoalCard(goal);
+                                },
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
         ),
       ),
     );
@@ -289,28 +482,4 @@ class _AlertPageState extends State<AlertPage> {
   }
 }
 
-class GoalAlert {
-  final String title;
-  final double monthDeposit;
-  final int appliedMonths;
-  final int depositedMonths;
-  final int pendingMonths;
-  final double estimatedAmount;
-  final double passiveIncome;
-  final String remainingTime;
-  final double totalInvestment;
-  final double totalInterest;
 
-  GoalAlert({
-    required this.title,
-    required this.monthDeposit,
-    required this.appliedMonths,
-    required this.depositedMonths,
-    required this.pendingMonths,
-    required this.estimatedAmount,
-    required this.passiveIncome,
-    required this.remainingTime,
-    required this.totalInvestment,
-    required this.totalInterest,
-  });
-}

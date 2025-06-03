@@ -1,7 +1,9 @@
-import 'package:appeducafin/views/goals.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'dart:math';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:appeducafin/views/goals.dart';
 
 class CalculatorPage extends StatefulWidget {
   final double? initialAmount;
@@ -21,9 +23,8 @@ class CalculatorPage extends StatefulWidget {
 
 class _CalculatorPageState extends State<CalculatorPage> {
   final _formKey = GlobalKey<FormState>();
-
   final _initialController = TextEditingController();
-  final _monthlyController = TextEditingController(text: '800');
+  final _monthlyController = TextEditingController(text: '500');
   final _monthsController = TextEditingController();
   final _interestController = TextEditingController();
 
@@ -36,10 +37,10 @@ class _CalculatorPageState extends State<CalculatorPage> {
   void initState() {
     super.initState();
     _initialController.text =
-        widget.initialAmount?.toStringAsFixed(0) ?? '38000';
+        widget.initialAmount?.toStringAsFixed(0) ?? '1000';
     _monthsController.text = widget.months?.toString() ?? '120';
     _interestController.text =
-        widget.interestRate?.toStringAsFixed(2) ?? '1.03';
+        widget.interestRate?.toStringAsFixed(2) ?? '1.14';
     _calculate();
   }
 
@@ -244,23 +245,39 @@ class CalculatorContent extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.add_circle_outline),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder:
-                      (_) => GoalsPage(
-                        data: {
-                          'initial': initial,
-                          'monthly': monthly,
-                          'months': months,
-                          'rate': rate,
-                          'finalAmount': result,
-                          'category': 'Meta Personalizada',
-                        },
-                      ),
-                ),
-              );
+            tooltip: 'Salvar Meta',
+            onPressed: () async {
+              final userId = FirebaseAuth.instance.currentUser?.uid;
+              if (userId == null) return;
+
+              final newGoal = {
+                'initial': initial,
+                'monthly': monthly,
+                'months': months,
+                'rate': rate,
+                'finalAmount': result,
+                'category': 'Meta Personalizada',
+                'deleted': false,
+                'userId': userId,
+                'createdAt': DateTime.now().toIso8601String(),
+              };
+
+              try {
+                await FirebaseFirestore.instance
+                    .collection('goals')
+                    .add(newGoal);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Meta salva com sucesso!')),
+                );
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const GoalsPage()),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Erro ao salvar meta: \$e')),
+                );
+              }
             },
           ),
         ],

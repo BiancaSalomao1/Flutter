@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 import '../controllers/quote_controller.dart';
 import 'package:appeducafin/views/search.dart';
 
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
