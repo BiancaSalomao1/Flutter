@@ -269,10 +269,7 @@ class CalculatorContent extends StatelessWidget {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Meta salva com sucesso!')),
                 );
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const GoalsPage()),
-                );
+                Navigator.popUntil(context, (route) => route.isFirst);
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Erro ao salvar meta: \$e')),

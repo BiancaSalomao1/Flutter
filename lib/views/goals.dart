@@ -164,16 +164,23 @@ class _GoalsPageState extends State<GoalsPage> {
     String newCategory,
   ) async {
     final id = goal['id'];
-    if (id != null) {
-      try {
-        await FirebaseFirestore.instance.collection('goals').doc(id).update({
-          'category': newCategory,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-        print('✅ Meta movida para categoria: $newCategory');
-      } catch (e) {
-        print('❌ Erro ao mover meta: $e');
-      }
+    if (id == null || oldCategory == newCategory) return;
+
+    try {
+      // Atualiza no Firebase
+      await FirebaseFirestore.instance.collection('goals').doc(id).update({
+        'category': newCategory,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      print('✅ Meta movida para categoria: $newCategory');
+
+      // Atualiza localmente para remover da categoria antiga e forçar rebuild
+      setState(() {
+        goal['category'] = newCategory; // 👈 altera a referência local
+      });
+    } catch (e) {
+      print('❌ Erro ao mover meta: $e');
     }
   }
 
@@ -329,9 +336,46 @@ class _GoalsPageState extends State<GoalsPage> {
                   );
 
                   return DragTarget<Map<String, dynamic>>(
-                    onAccept: (goal) {
+                    onAcceptWithDetails: (details) async {
+                      final goal = details.data;
                       final oldCategory = goal['category'];
-                      _updateGoalCategory(oldCategory, goal, title);
+                      final newCategory = title;
+                      final id = goal['id'];
+
+                      if (id == null || oldCategory == newCategory) return;
+
+                      try {
+                        await FirebaseFirestore.instance
+                            .collection('goals')
+                            .doc(id)
+                            .update({
+                              'category': newCategory,
+                              'updatedAt': FieldValue.serverTimestamp(),
+                            });
+
+                        print(
+                          '✅ Atualizado no Firestore: $id de $oldCategory para $newCategory',
+                        );
+
+                        setState(() {
+                          goal['category'] = newCategory;
+
+                          final oldList = snapshot.data![oldCategory];
+                          final newList = snapshot.data![newCategory];
+
+                          if (oldList != null) {
+                            oldList.removeWhere((g) => g['id'] == id);
+                          }
+
+                          if (newList != null) {
+                            newList.add(goal);
+                          } else {
+                            categorizedGoals[newCategory] = [goal];
+                          }
+                        });
+                      } catch (e) {
+                        print('❌ Erro ao atualizar categoria: $e');
+                      }
                     },
                     builder:
                         (context, candidateData, rejectedData) => Container(

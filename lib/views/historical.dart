@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HistoricalPage extends StatefulWidget {
   const HistoricalPage({super.key});
@@ -22,17 +23,23 @@ class _HistoricalPageState extends State<HistoricalPage> {
   Future<void> _loadAllGoalsAndHistory() async {
     try {
       // Primeiro, buscar todas as metas com valor > 0
-      final goalsSnapshot = await FirebaseFirestore.instance
-          .collection('goals')
-          .where('monthly', isGreaterThan: 0)
-          .get();
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId == null) return;
+
+      final goalsSnapshot =
+          await FirebaseFirestore.instance
+              .collection('goals')
+              .where('userId', isEqualTo: userId)
+              .where('deleted', isEqualTo: false)
+              .where('monthly', isGreaterThan : 0)
+              .get();
 
       final List<GoalHistoryModel> goalsWithHistory = [];
 
       for (var doc in goalsSnapshot.docs) {
         final data = doc.data();
         final goalId = doc.id;
-        
+
         // Verificar se a meta foi apagada (filtro manual)
         final isDeleted = data['deleted'] ?? false;
         if (isDeleted) {
@@ -42,26 +49,28 @@ class _HistoricalPageState extends State<HistoricalPage> {
         final monthly = (data['monthly'] as num).toDouble();
         final title = data['category'] ?? 'Meta';
 
-        final historyDoc = await FirebaseFirestore.instance
-            .collection('history')
-            .doc(goalId)
-            .get();
+        final historyDoc =
+            await FirebaseFirestore.instance
+                .collection('history')
+                .doc(goalId)
+                .get();
 
         List<DepositEntry> history = [];
         if (historyDoc.exists) {
           final historyData = historyDoc.data();
           if (historyData != null && historyData.containsKey('items')) {
             final raw = List<Map<String, dynamic>>.from(historyData['items']);
-            history = raw
-                .map(
-                  (e) => DepositEntry(
-                    month: e['month'],
-                    amount: (e['amount'] as num).toDouble(),
-                    confirmed: e['confirmed'] ?? false,
-                    timestamp: (e['timestamp'] as Timestamp).toDate(),
-                  ),
-                )
-                .toList();
+            history =
+                raw
+                    .map(
+                      (e) => DepositEntry(
+                        month: e['month'],
+                        amount: (e['amount'] as num).toDouble(),
+                        confirmed: e['confirmed'] ?? false,
+                        timestamp: (e['timestamp'] as Timestamp).toDate(),
+                      ),
+                    )
+                    .toList();
           }
         }
 
@@ -114,18 +123,21 @@ class _HistoricalPageState extends State<HistoricalPage> {
   Future<void> _loadAllGoalsAndHistorySimple() async {
     try {
       // Buscar todas as metas ativas (sem filtro de deleted para evitar índice composto)
-      final goalsSnapshot = await FirebaseFirestore.instance
-          .collection('goals')
-          .where('monthly', isGreaterThan: 0)
-          .get();
+      final goalsSnapshot =
+          await FirebaseFirestore.instance
+              .collection('goals')
+              .where('monthly', isGreaterThan: 0)
+              .get();
 
       final List<GoalHistoryModel> goalsWithHistory = [];
 
       for (var doc in goalsSnapshot.docs) {
         // Verificar se o documento ainda existe (re-fetch para garantir que não foi deletado)
-        final docRef = FirebaseFirestore.instance.collection('goals').doc(doc.id);
+        final docRef = FirebaseFirestore.instance
+            .collection('goals')
+            .doc(doc.id);
         final currentDoc = await docRef.get();
-        
+
         if (!currentDoc.exists) {
           continue; // Pular se o documento foi completamente apagado
         }
@@ -133,34 +145,36 @@ class _HistoricalPageState extends State<HistoricalPage> {
         final data = currentDoc.data()!;
         final goalId = doc.id;
         final monthly = (data['monthly'] as num?)?.toDouble() ?? 0.0;
-        
+
         // Se monthly for 0 ou negativo após a verificação, pular
         if (monthly <= 0) {
           continue;
         }
-        
+
         final title = data['category'] ?? 'Meta';
 
-        final historyDoc = await FirebaseFirestore.instance
-            .collection('history')
-            .doc(goalId)
-            .get();
+        final historyDoc =
+            await FirebaseFirestore.instance
+                .collection('history')
+                .doc(goalId)
+                .get();
 
         List<DepositEntry> history = [];
         if (historyDoc.exists) {
           final historyData = historyDoc.data();
           if (historyData != null && historyData.containsKey('items')) {
             final raw = List<Map<String, dynamic>>.from(historyData['items']);
-            history = raw
-                .map(
-                  (e) => DepositEntry(
-                    month: e['month'],
-                    amount: (e['amount'] as num).toDouble(),
-                    confirmed: e['confirmed'] ?? false,
-                    timestamp: (e['timestamp'] as Timestamp).toDate(),
-                  ),
-                )
-                .toList();
+            history =
+                raw
+                    .map(
+                      (e) => DepositEntry(
+                        month: e['month'],
+                        amount: (e['amount'] as num).toDouble(),
+                        confirmed: e['confirmed'] ?? false,
+                        timestamp: (e['timestamp'] as Timestamp).toDate(),
+                      ),
+                    )
+                    .toList();
           }
         }
 
@@ -258,40 +272,44 @@ class _HistoricalPageState extends State<HistoricalPage> {
         ),
         title: const Text('Histórico de Depósitos'),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _goals.isEmpty
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _goals.isEmpty
               ? _buildNoGoalsMessage()
               : ListView.builder(
-                  itemCount: _goals.length,
-                  itemBuilder: (context, i) {
-                    final goal = _goals[i];
-                    return ExpansionTile(
-                      title: Text(goal.title),
-                      children: goal.history.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final item = entry.value;
-                        return ListTile(
-                          title: Text(item.month),
-                          subtitle: Text(
-                            'R\$${item.amount.toStringAsFixed(2)}',
-                          ),
-                          trailing: ElevatedButton(
-                            onPressed: item.confirmed
-                                ? null
-                                : () => _confirmDeposit(goal.goalId, index),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  item.confirmed ? Colors.green : Colors.grey,
-                              disabledBackgroundColor: Colors.green,
+                itemCount: _goals.length,
+                itemBuilder: (context, i) {
+                  final goal = _goals[i];
+                  return ExpansionTile(
+                    title: Text(goal.title),
+                    children:
+                        goal.history.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final item = entry.value;
+                          return ListTile(
+                            title: Text(item.month),
+                            subtitle: Text(
+                              'R\$${item.amount.toStringAsFixed(2)}',
                             ),
-                            child: const Text('Confirmar'),
-                          ),
-                        );
-                      }).toList(),
-                    );
-                  },
-                ),
+                            trailing: ElevatedButton(
+                              onPressed:
+                                  item.confirmed
+                                      ? null
+                                      : () =>
+                                          _confirmDeposit(goal.goalId, index),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    item.confirmed ? Colors.green : Colors.grey,
+                                disabledBackgroundColor: Colors.green,
+                              ),
+                              child: const Text('Confirmar'),
+                            ),
+                          );
+                        }).toList(),
+                  );
+                },
+              ),
     );
   }
 
@@ -357,16 +375,16 @@ class DepositEntry {
   });
 
   Map<String, dynamic> toMap() => {
-        'month': month,
-        'amount': amount,
-        'confirmed': confirmed,
-        'timestamp': Timestamp.fromDate(timestamp),
-      };
+    'month': month,
+    'amount': amount,
+    'confirmed': confirmed,
+    'timestamp': Timestamp.fromDate(timestamp),
+  };
 
   DepositEntry copyWith({bool? confirmed}) => DepositEntry(
-        month: month,
-        amount: amount,
-        confirmed: confirmed ?? this.confirmed,
-        timestamp: timestamp,
-      );
+    month: month,
+    amount: amount,
+    confirmed: confirmed ?? this.confirmed,
+    timestamp: timestamp,
+  );
 }
