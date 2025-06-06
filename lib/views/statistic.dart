@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:appeducafin/views/historical.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class StatisticDashboard extends StatefulWidget {
   const StatisticDashboard({super.key});
@@ -26,92 +27,103 @@ class _StatisticDashboardState extends State<StatisticDashboard> {
   }
 
   Future<void> _loadFinancialData() async {
-    try {
-      final historySnapshot =
-          await FirebaseFirestore.instance.collection('history').get();
-      final goalsSnapshot =
-          await FirebaseFirestore.instance.collection('goals').get();
+  try {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-      Map<String, double> goalRates = {};
-      for (var doc in goalsSnapshot.docs) {
-        final data = doc.data();
-        final rate = (data['rate'] ?? 1.0).toDouble();
-        goalRates[doc.id] = rate;
-      }
+    final historySnapshot = await FirebaseFirestore.instance
+        .collection('history')
+        .get(); // sem filtro por userId
 
-      Map<int, double> entradasPorMes = {};
-      Map<int, double> montantePorMes = {};
+    final goalsSnapshot = await FirebaseFirestore.instance
+        .collection('goals')
+        .where('userId', isEqualTo: user.uid)
+        .where('deleted', isEqualTo: false)
+        .get();
 
-      double totalEntradas = 0;
-      double totalJuros = 0;
-
-      for (var doc in historySnapshot.docs) {
-        final goalId = doc.id;
-        final rate = goalRates[goalId] ?? 1.0;
-
-        final List<dynamic> items = doc['items'];
-        final List<DepositEntry> confirmed =
-            items
-                .map(
-                  (e) => DepositEntry(
-                    month: e['month'],
-                    amount: (e['amount'] as num).toDouble(),
-                    confirmed: e['confirmed'] == true,
-                    timestamp: (e['timestamp'] as Timestamp).toDate(),
-                  ),
-                )
-                .where((entry) => entry.confirmed)
-                .toList();
-
-        confirmed.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-
-        double montanteAcumulado = 0;
-
-        for (var entry in confirmed) {
-          final monthIndex =
-              (entry.timestamp.year * 12) + entry.timestamp.month;
-
-          // Entradas
-          totalEntradas += entry.amount;
-          entradasPorMes[monthIndex] =
-              (entradasPorMes[monthIndex] ?? 0) + entry.amount;
-
-          // Juros compostos acumulados
-          montanteAcumulado += entry.amount;
-          final jurosMeta = montanteAcumulado * (rate / 100);
-          totalJuros += jurosMeta;
-
-          montantePorMes[monthIndex] = montanteAcumulado;
-        }
-
-        totalJuros +=
-            montanteAcumulado - confirmed.fold(0, (sum, e) => sum + e.amount);
-      }
-
-      final sortedMeses = entradasPorMes.keys.toList()..sort();
-      double acumuladoEntradas = 0;
-      final entradaSpots = <FlSpot>[];
-      final montanteSpots = <FlSpot>[];
-
-      for (int i = 0; i < sortedMeses.length; i++) {
-        final mes = sortedMeses[i];
-        final entrada = entradasPorMes[mes]!;
-        acumuladoEntradas += entrada;
-
-        entradaSpots.add(FlSpot(i.toDouble(), acumuladoEntradas));
-        montanteSpots.add(FlSpot(i.toDouble(), montantePorMes[mes]!));
-      }
-
-      setState(() {
-        this.totalEntradas = totalEntradas;
-        this.totalJuros = totalJuros;
-        this.entradaSpots = entradaSpots;
-        this.montanteSpots = montanteSpots;
-      });
-    } catch (e) {
-      print('Erro ao carregar dados financeiros: $e');
+    Map<String, double> goalRates = {};
+    for (var doc in goalsSnapshot.docs) {
+      final data = doc.data();
+      final rate = (data['rate'] ?? 0.0).toDouble();
+      goalRates[doc.id] = rate;
     }
+
+    Map<int, double> entradasPorMes = {};
+    Map<int, double> montantePorMes = {};
+    double totalEntradas = 0;
+    double totalJuros = 0;
+
+    for (var doc in historySnapshot.docs) {
+      final goalId = doc.id;
+
+      if (!goalRates.containsKey(goalId)) {
+        print('⚠️ Ignorado: meta $goalId não encontrada ou sem taxa.');
+        continue;
+      }
+
+      final rate = goalRates[goalId]!;
+      final List<dynamic>? items = doc['items'];
+
+      if (items == null || items.isEmpty) continue;
+
+      final List<DepositEntry> confirmed = items
+          .map(
+            (e) => DepositEntry(
+              month: e['month'],
+              amount: (e['amount'] as num).toDouble(),
+              confirmed: e['confirmed'] == true,
+              timestamp: (e['timestamp'] as Timestamp).toDate(),
+            ),
+          )
+          .where((entry) => entry.confirmed)
+          .toList();
+
+      if (confirmed.isEmpty) continue;
+
+      confirmed.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      double montanteAcumulado = 0;
+
+      for (var entry in confirmed) {
+        final monthIndex = (entry.timestamp.year * 12) + entry.timestamp.month;
+
+        // Entradas
+        totalEntradas += entry.amount;
+        entradasPorMes[monthIndex] =
+            (entradasPorMes[monthIndex] ?? 0) + entry.amount;
+
+        // Juros compostos
+        montanteAcumulado = montanteAcumulado * (1 + rate / 100) + entry.amount;
+        montantePorMes[monthIndex] = montanteAcumulado;
+
+        final jurosDoMes = montanteAcumulado - totalEntradas;
+        totalJuros = jurosDoMes < 0 ? 0 : jurosDoMes;
+      }
+    }
+
+    final sortedMeses = entradasPorMes.keys.toList()..sort();
+    double acumuladoEntradas = 0;
+    final entradaSpots = <FlSpot>[];
+    final montanteSpots = <FlSpot>[];
+
+    for (int i = 0; i < sortedMeses.length; i++) {
+      final mes = sortedMeses[i];
+      final entrada = entradasPorMes[mes]!;
+      acumuladoEntradas += entrada;
+
+      entradaSpots.add(FlSpot(i.toDouble(), acumuladoEntradas));
+      montanteSpots.add(FlSpot(i.toDouble(), montantePorMes[mes]!));
+    }
+
+    setState(() {
+      this.totalEntradas = totalEntradas;
+      this.totalJuros = totalJuros;
+      this.entradaSpots = entradaSpots;
+      this.montanteSpots = montanteSpots;
+    });
+  } catch (e) {
+    print('Erro ao carregar dados financeiros: $e');
   }
+}
 
   @override
   Widget build(BuildContext context) {
