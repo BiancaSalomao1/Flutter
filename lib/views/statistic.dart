@@ -26,14 +26,14 @@ class _StatisticDashboardState extends State<StatisticDashboard> {
     _loadFinancialData();
   }
 
-  Future<void> _loadFinancialData() async {
+ Future<void> _loadFinancialData() async {
   try {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
     final historySnapshot = await FirebaseFirestore.instance
         .collection('history')
-        .get(); // sem filtro por userId
+        .get(); // ainda sem filtro por userId
 
     final goalsSnapshot = await FirebaseFirestore.instance
         .collection('goals')
@@ -41,11 +41,12 @@ class _StatisticDashboardState extends State<StatisticDashboard> {
         .where('deleted', isEqualTo: false)
         .get();
 
-    Map<String, double> goalRates = {};
+    Map<String, Map<String, double>> goalDataMap = {};
     for (var doc in goalsSnapshot.docs) {
       final data = doc.data();
       final rate = (data['rate'] ?? 0.0).toDouble();
-      goalRates[doc.id] = rate;
+      final initial = (data['initial'] ?? 0.0).toDouble();
+      goalDataMap[doc.id] = {'rate': rate, 'initial': initial};
     }
 
     Map<int, double> entradasPorMes = {};
@@ -56,35 +57,45 @@ class _StatisticDashboardState extends State<StatisticDashboard> {
     for (var doc in historySnapshot.docs) {
       final goalId = doc.id;
 
-      if (!goalRates.containsKey(goalId)) {
-        print('⚠️ Ignorado: meta $goalId não encontrada ou sem taxa.');
+      if (!goalDataMap.containsKey(goalId)) {
+        print('⚠️ Ignorado: meta $goalId não encontrada ou sem dados.');
         continue;
       }
 
-      final rate = goalRates[goalId]!;
-      final List<dynamic>? items = doc['items'];
+      final rate = goalDataMap[goalId]!['rate']!;
+      final initial = goalDataMap[goalId]!['initial']!;
 
+      final List<dynamic>? items = doc['items'];
       if (items == null || items.isEmpty) continue;
 
       final List<DepositEntry> confirmed = items
-          .map(
-            (e) => DepositEntry(
-              month: e['month'],
-              amount: (e['amount'] as num).toDouble(),
-              confirmed: e['confirmed'] == true,
-              timestamp: (e['timestamp'] as Timestamp).toDate(),
-            ),
-          )
+          .map((e) => DepositEntry(
+                month: e['month'],
+                amount: (e['amount'] as num).toDouble(),
+                confirmed: e['confirmed'] == true,
+                timestamp: (e['timestamp'] as Timestamp).toDate(),
+              ))
           .where((entry) => entry.confirmed)
           .toList();
 
       if (confirmed.isEmpty) continue;
 
       confirmed.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-      double montanteAcumulado = 0;
+
+      // 🟢 Considera o initial
+      double montanteAcumulado = initial;
+      totalEntradas += initial;
+
+      final firstMonthIndex =
+          (confirmed.first.timestamp.year * 12) + confirmed.first.timestamp.month;
+      entradasPorMes[firstMonthIndex] =
+          (entradasPorMes[firstMonthIndex] ?? 0) + initial;
+      montantePorMes[firstMonthIndex] =
+          (montantePorMes[firstMonthIndex] ?? 0) + initial;
 
       for (var entry in confirmed) {
-        final monthIndex = (entry.timestamp.year * 12) + entry.timestamp.month;
+        final monthIndex =
+            (entry.timestamp.year * 12) + entry.timestamp.month;
 
         // Entradas
         totalEntradas += entry.amount;
@@ -92,7 +103,8 @@ class _StatisticDashboardState extends State<StatisticDashboard> {
             (entradasPorMes[monthIndex] ?? 0) + entry.amount;
 
         // Juros compostos
-        montanteAcumulado = montanteAcumulado * (1 + rate / 100) + entry.amount;
+        montanteAcumulado =
+            montanteAcumulado * (1 + rate / 100) + entry.amount;
         montantePorMes[monthIndex] = montanteAcumulado;
 
         final jurosDoMes = montanteAcumulado - totalEntradas;

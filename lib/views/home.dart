@@ -13,7 +13,7 @@ import 'package:appeducafin/views/sugestions.dart';
 import 'package:provider/provider.dart';
 import '../controllers/quote_controller.dart';
 import 'package:appeducafin/views/search.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,6 +23,12 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  @override
+  void initState() {
+    super.initState();
+    corrigirUserIdEmHistory();
+  }
+
   int _currentIndex = 0;
   final PageController _pageController = PageController();
 
@@ -42,6 +48,28 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> corrigirUserIdEmHistory() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      print('Usuário não autenticado.');
+      return;
+    }
+
+    final historyCollection = FirebaseFirestore.instance.collection('history');
+    final snapshot = await historyCollection.get();
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      if (data.containsKey('userId')) {
+        print('Documento ${doc.id} já tem userId');
+        continue;
+      }
+
+      await doc.reference.update({'userId': user.uid});
+      print('Adicionado userId em ${doc.id}');
+    }
   }
 
   @override
@@ -64,42 +92,75 @@ class HomeContent extends StatelessWidget {
   const HomeContent({super.key});
 
   Future<Map<String, double>> _calcularJurosDasMetas() async {
-    final historySnapshot = await FirebaseFirestore.instance.collection('history').get();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return {'montante': 0, 'juros': 0};
 
-    double totalConfirmado = 0;
+    final historySnapshot =
+        await FirebaseFirestore.instance
+            .collection('history')
+            .where('userId', isEqualTo: user.uid)
+            .get();
+
+    final goalsSnapshot =
+        await FirebaseFirestore.instance
+            .collection('goals')
+            .where('userId', isEqualTo: user.uid)
+            .where('deleted', isEqualTo: false)
+            .get();
+
+    Map<String, Map<String, double>> goalDataMap = {};
+    for (var doc in goalsSnapshot.docs) {
+      final data = doc.data();
+      final rate = (data['rate'] ?? 0.0).toDouble();
+      final initial = (data['initial'] ?? 0.0).toDouble();
+      goalDataMap[doc.id] = {'rate': rate, 'initial': initial};
+    }
+
+    double totalEntradas = 0;
     double totalJuros = 0;
 
     for (var doc in historySnapshot.docs) {
       final goalId = doc.id;
-      print('Verificando histórico para meta: $goalId');
 
-      final goalDoc = await FirebaseFirestore.instance
-          .collection('goals')
-          .doc(goalId)
-          .get();
-
-      if (!goalDoc.exists || (goalDoc.data()?['deleted'] == true)) {
-        print('Meta $goalId não encontrada ou marcada como deletada - ignorando.');
+      if (!goalDataMap.containsKey(goalId)) {
         continue;
       }
 
-      final historyItems = List<Map<String, dynamic>>.from(doc['items']);
-      final confirmedDeposits = historyItems
-          .where((item) => item['confirmed'] == true)
-          .map((item) => (item['amount'] as num).toDouble())
-          .toList();
+      final rate = goalDataMap[goalId]!['rate']!;
+      final initial = goalDataMap[goalId]!['initial']!;
 
-      final double somaConfirmada = confirmedDeposits.fold(0, (a, b) => a + b);
-      totalConfirmado += somaConfirmada;
+      final data = doc.data();
+      if (data['items'] == null) continue;
 
-      final goalData = goalDoc.data()!;
-      final taxa = (goalData['rate'] ?? 0).toDouble();
-      final juros = somaConfirmada * (taxa / 100);
-      print('Juros da meta $goalId com taxa $taxa%: $juros');
-      totalJuros += juros;
+      final List<dynamic> items = data['items'];
+      final List<Map<String, dynamic>> confirmed =
+          items
+              .where((item) => item['confirmed'] == true)
+              .cast<Map<String, dynamic>>()
+              .toList();
+
+      if (confirmed.isEmpty) continue;
+
+      confirmed.sort((a, b) {
+        final t1 = (a['timestamp'] as Timestamp).toDate();
+        final t2 = (b['timestamp'] as Timestamp).toDate();
+        return t1.compareTo(t2);
+      });
+
+      double montanteAcumulado = initial;
+      totalEntradas += initial;
+
+      for (var item in confirmed) {
+        final amount = (item['amount'] as num).toDouble();
+        totalEntradas += amount;
+        montanteAcumulado = montanteAcumulado * (1 + rate / 100) + amount;
+      }
+
+      final juros = montanteAcumulado - totalEntradas;
+      totalJuros += juros < 0 ? 0 : juros;
     }
 
-    return {'montante': totalConfirmado, 'juros': totalJuros};
+    return {'montante': totalEntradas, 'juros': totalJuros};
   }
 
   @override
@@ -135,10 +196,11 @@ class HomeContent extends StatelessWidget {
               ],
             ),
             GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AlertPage()),
-              ),
+              onTap:
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AlertPage()),
+                  ),
               child: const CircleAvatar(
                 backgroundImage: AssetImage('assets/bell.png'),
               ),
@@ -154,8 +216,16 @@ class HomeContent extends StatelessWidget {
             FutureBuilder<Map<String, double>>(
               future: _calcularJurosDasMetas(),
               builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const CircularProgressIndicator(); // ou shimmer
+                }
+                if (snapshot.hasError) {
+                  return Text('Erro: ${snapshot.error}');
+                }
+
                 final montante = snapshot.data?['montante'] ?? 0;
                 final juros = snapshot.data?['juros'] ?? 0;
+
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -183,13 +253,19 @@ class HomeContent extends StatelessWidget {
               child: ListView(
                 children: [
                   _buildMenuItem(Icons.shield, 'Metas', () => navigateTo(1)),
-                  _buildMenuItem(Icons.bar_chart, 'Estatísticas', () => navigateTo(2)),
+                  _buildMenuItem(
+                    Icons.bar_chart,
+                    'Estatísticas',
+                    () => navigateTo(2),
+                  ),
                   _buildMenuItem(
                     Icons.school,
                     'Conteúdo Educacional',
                     () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const EducationalContentPage()),
+                      MaterialPageRoute(
+                        builder: (_) => const EducationalContentPage(),
+                      ),
                     ),
                   ),
                   _buildMenuItem(
@@ -198,10 +274,11 @@ class HomeContent extends StatelessWidget {
                     () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ChangeNotifierProvider(
-                          create: (_) => QuoteController(),
-                          child: InvestmentSuggestionsPage(),
-                        ),
+                        builder:
+                            (_) => ChangeNotifierProvider(
+                              create: (_) => QuoteController(),
+                              child: InvestmentSuggestionsPage(),
+                            ),
                       ),
                     ),
                   ),
@@ -275,7 +352,10 @@ class HomeContent extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 8.0,
+          horizontal: 16,
+        ),
         leading: Icon(icon, color: Colors.pinkAccent),
         title: Text(title),
         tileColor: Colors.pink.shade50,
