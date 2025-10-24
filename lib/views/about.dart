@@ -21,9 +21,9 @@ class AboutPage extends StatelessWidget {
               const SizedBox(height: 16),
               const Text(
                 'Este aplicativo foi desenvolvido com o objetivo de auxiliar os usuários na organização de metas financeiras, investimentos e educação financeira de forma prática e intuitiva.\n\n'
-                'Nossa missão é tornar o planejamento financeiro acessível a todos, promovendo autonomia e clareza nas decisões sobre o dinheiro.\n\n'
-                'Se você tiver sugestões ou encontrar problemas, entre em contato conosco! \n\n'
-                'bianca.salomao@fatec.sp.gov.br - Bianca L F Salomão ou marcio.petracca@fatec.sp.gov.br- Maricio Robson Petracca \n\n'
+                'A missão é tornar o planejamento financeiro acessível a todos, promovendo autonomia e clareza nas decisões sobre o dinheiro.\n\n'
+                'Se você tiver sugestões ou encontrar problemas, entre em contato! \n\n'
+                'bialfsalomao35@gmail.com - Bianca Salomão\n\n'
                 'Esta é uma versão preliminar do aplicativo para fins de teste e feedback. Agradecemos por sua compreensão e apoio.\n\n',
                 style: TextStyle(fontSize: 16),
               ),
